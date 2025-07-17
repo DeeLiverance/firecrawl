@@ -54,6 +54,7 @@ _Pst. hey, you, join our stargazers :)_
 We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.dev/playground). You can also self host the backend if you'd like.
 
 Check out the following resources to get started:
+
 - [x] **API**: [Documentation](https://docs.firecrawl.dev/api-reference/introduction)
 - [x] **SDKs**: [Python](https://docs.firecrawl.dev/sdks/python), [Node](https://docs.firecrawl.dev/sdks/node), [Go](https://docs.firecrawl.dev/sdks/go), [Rust](https://docs.firecrawl.dev/sdks/rust)
 - [x] **LLM Frameworks**: [Langchain (python)](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/), [Langchain (js)](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl), [Llama Index](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader), [Crew.ai](https://docs.crewai.com/), [Composio](https://composio.dev/tools/firecrawl/all), [PraisonAI](https://docs.praison.ai/firecrawl/), [Superinterface](https://superinterface.ai/docs/assistants/functions/firecrawl), [Vectorize](https://docs.vectorize.io/integrations/source-connectors/firecrawl)
@@ -62,6 +63,28 @@ Check out the following resources to get started:
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
+
+## Table of contents
+
+- [Features](#features)
+- [Quickstart](#quickstart)
+- [Documentation](#documentation)
+- [RAG Implementation](#rag-implementation)
+- [Self-hosting](#self-hosting)
+- [Contributing](#contributing)
+- [License](#license)
+
+## RAG Implementation
+
+Learn how to build a Retrieval-Augmented Generation (RAG) system with Firecrawl:
+
+- [RAG Implementation Guide](./RAG-IMPLEMENTATION.md) - Complete guide to creating a RAG system with Firecrawl
+  - Website crawling and content extraction
+  - Text processing and chunking for LLMs
+  - Vector database integration
+  - Querying and retrieval
+
+This guide shows you how to transform web content into a powerful knowledge base for your LLM applications.
 
 ### API Key
 
@@ -76,6 +99,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - [**Extract**](#extract): get structured data from single page, multiple pages or entire websites with AI.
 
 ### Powerful Capabilities
+
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
 - **The hard stuff**: proxies, anti-bot mechanisms, dynamic content (js-rendered), output parsing, orchestration
 - **Customizability**: exclude tags, crawl behind auth walls with custom headers, max crawl depth, etc...
@@ -305,10 +329,10 @@ Get structured data from entire websites with a prompt and/or a schema.
 You can extract structured data from one or multiple URLs, including wildcards:
 
 Single Page:
-Example: https://firecrawl.dev/some-page
+Example: <https://firecrawl.dev/some-page>
 
 Multiple Pages / Full Domain
-Example: https://firecrawl.dev/*
+Example: <https://firecrawl.dev/>*
 
 When you use /*, Firecrawl will automatically crawl and parse all URLs it can discover in that domain, then extract the requested data.
 
@@ -492,8 +516,6 @@ curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
     }'
 ```
 
-
-
 ## Using Python SDK
 
 ### Installing Python SDK
@@ -591,7 +613,6 @@ if (crawlResponse) {
 }
 ```
 
-
 ### Extracting structured data from a URL
 
 With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how to use it:
@@ -628,14 +649,13 @@ console.log(scrapeResult.data["json"]);
 
 ## Open Source vs Cloud Offering
 
-Firecrawl is open source available under the AGPL-3.0 license. 
+Firecrawl is open source available under the AGPL-3.0 license.
 
 To deliver the best possible product, we offer a hosted version of Firecrawl alongside our open-source offering. The cloud solution allows us to continuously innovate and maintain a high-quality, sustainable service for all users.
 
 Firecrawl Cloud is available at [firecrawl.dev](https://firecrawl.dev) and offers a range of features that are not available in the open source version:
 
 ![Open Source vs Cloud Offering](https://raw.githubusercontent.com/mendableai/firecrawl/main/img/open-source-cloud.png)
-
 
 ## Contributing
 
@@ -660,7 +680,6 @@ Please note:
 - When using or contributing to this project, ensure you comply with the appropriate license terms for the specific component you are working with.
 
 For more details on the licensing of specific components, please refer to the LICENSE files in the respective directories or contact the project maintainers.
-
 
 <p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
     <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">

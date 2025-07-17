@@ -1,0 +1,12 @@
+{
+  "default": true,
+  "MD013": {
+    "line_length": 120,
+    "tables": false
+  },
+  "MD033": {
+    "allowed_elements": ["details", "summary", "a", "img", "br", "hr", "pre", "code", "table", "thead", "tbody", "tr", "th", "td"]
+  },
+  "MD041": false,
+  "MD047": true
+}

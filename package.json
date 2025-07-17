@@ -1,0 +1,13 @@
+{
+  "name": "firecrawl-docs",
+  "version": "1.0.0",
+  "description": "Documentation for Firecrawl",
+  "scripts": {
+    "lint:md": "markdownlint '**/*.md' --ignore-path .gitignore",
+    "lint:md:fix": "markdownlint '**/*.md' --fix --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "markdownlint": "^0.32.1",
+    "markdownlint-cli": "^0.39.0"
+  }
+}
