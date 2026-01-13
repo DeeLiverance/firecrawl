@@ -1331,7 +1331,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["markdown", "json"],
+                      "enum": ["markdown", "json", "branding"],
                       "default": ["markdown"]
                     }
                   },
@@ -1763,7 +1763,8 @@
                             "links",
                             "screenshot",
                             "screenshot@fullPage",
-                            "json"
+                            "json",
+                            "branding"
                           ]
                         },
                         "description": "Formats to include in the output",
@@ -2100,7 +2101,8 @@
                 "screenshot",
                 "screenshot@fullPage",
                 "json",
-                "changeTracking"
+                "changeTracking",
+                "branding"
               ]
             },
             "description": "Formats to include in the output.",
@@ -2503,6 +2505,10 @@
                     "type": "integer",
                     "description": "The status code of the page"
                   },
+                  "timezone": {
+                    "type": "string",
+                    "description": "Timezone inferred by the scraping engine, when available"
+                  },
                   "error": {
                     "type": "string",
                     "nullable": true,
@@ -2550,6 +2556,67 @@
                     "type": "object",
                     "nullable": true,
                     "description": "JSON comparison results when using 'json' mode. Only present when the mode is set to 'json'. This will emit a list of all the keys and their values from the `previous` and `current` scrapes based on the type defined in the `schema`. Example [here](/features/change-tracking)"
+                  }
+                }
+              },
+              "branding": {
+                "type": "object",
+                "nullable": true,
+                "description": "Brand identity information derived from executing on-page javascript.",
+                "properties": {
+                  "logo": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Primary logo URL if detected."
+                  },
+                  "fonts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "family": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": true
+                    },
+                    "description": "Detected font families."
+                  },
+                  "colors": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "typography": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "spacing": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "components": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "icons": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "images": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "animations": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "layout": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "tone": {
+                    "type": "object",
+                    "additionalProperties": true
                   }
                 }
               }
@@ -2641,6 +2708,10 @@
                       "type": "integer",
                       "description": "The status code of the page"
                     },
+                    "timezone": {
+                      "type": "string",
+                      "description": "Timezone inferred by the scraping engine, when available"
+                    },
                     "error": {
                       "type": "string",
                       "nullable": true,
@@ -2684,7 +2755,9 @@
           "robotsBlocked": {
             "type": "array",
             "description": "List of URLs that were attempted in scraping but were blocked by robots.txt",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2771,6 +2844,10 @@
                     "statusCode": {
                       "type": "integer",
                       "description": "The status code of the page"
+                    },
+                    "timezone": {
+                      "type": "string",
+                      "description": "Timezone inferred by the scraping engine, when available"
                     },
                     "error": {
                       "type": "string",

@@ -1,4 +1,3 @@
-import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
 import {
@@ -9,22 +8,19 @@ import {
   RequestWithAuth,
 } from "./types";
 import { WebSocket } from "ws";
-import { v4 as uuidv4 } from "uuid";
+import { v7 as uuidv7 } from "uuid";
 import { logger } from "../../lib/logger";
 import {
   getCrawl,
   getCrawlExpiry,
   getCrawlJobs,
   getDoneJobsOrdered,
-  getDoneJobsOrderedLength,
-  isCrawlFinished,
-  isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
-import { getJob, getJobs } from "./crawl-status";
+import { getJobs, PseudoJob } from "./crawl-status";
 import * as Sentry from "@sentry/node";
-import { Job, JobState } from "bullmq";
 import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { scrapeQueue, NuQJobStatus } from "../../services/worker/nuq";
+import { getErrorContactMessage } from "../../lib/deployment";
 
 type ErrorMessage = {
   type: "error";
@@ -48,7 +44,7 @@ type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
 function send(ws: WebSocket, msg: Message) {
   if (ws.readyState === 1) {
     return new Promise((resolve, reject) => {
-      ws.send(JSON.stringify(msg), (err) => {
+      ws.send(JSON.stringify(msg), err => {
         if (err) reject(err);
         else resolve(null);
       });
@@ -87,19 +83,16 @@ async function crawlStatusWS(
       return close(ws, 1000, { type: "done" });
     }
 
-    const notDoneJobIDs = jobIDs.filter((x) => !doneJobIDs.includes(x));
-    const jobStatuses = await Promise.all(
-      notDoneJobIDs.map(async (x) => [
-        x,
-        await getScrapeQueue().getJobState(x),
-      ]),
-    );
-    const newlyDoneJobIDs: string[] = jobStatuses
-      .filter((x) => x[1] === "completed" || x[1] === "failed")
-      .map((x) => x[0]);
-    const newlyDoneJobs: Job[] = (
-      await Promise.all(newlyDoneJobIDs.map((x) => getJob(x)))
-    ).filter((x) => x !== undefined) as Job[];
+    const notDoneJobIDs = jobIDs.filter(x => !doneJobIDs.includes(x));
+
+    const newlyDoneJobIDs: string[] = (
+      await scrapeQueue.getJobsWithStatuses(notDoneJobIDs, [
+        "completed",
+        "failed",
+      ])
+    ).map(x => x.id);
+
+    const newlyDoneJobs: PseudoJob<any>[] = await getJobs(newlyDoneJobIDs);
 
     for (const job of newlyDoneJobs) {
       if (job.returnvalue) {
@@ -113,49 +106,47 @@ async function crawlStatusWS(
     }
 
     doneJobIDs.push(...newlyDoneJobIDs);
-
     setTimeout(loop, 1000);
   };
 
   setTimeout(loop, 1000);
 
-  doneJobIDs = await getDoneJobsOrdered(req.params.jobId);
+  let [_doneJobIDs, jobIDs, throttledJobsSet] = await Promise.all([
+    getDoneJobsOrdered(req.params.jobId),
+    getCrawlJobs(req.params.jobId),
+    getConcurrencyLimitedJobs(req.auth.team_id),
+  ]);
 
-  let jobIDs = await getCrawlJobs(req.params.jobId);
-  let jobStatuses = await Promise.all(
-    jobIDs.map(
-      async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
-    ),
-  );
-  const throttledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
-  
-  const validJobStatuses: [string, JobState | "unknown"][] = [];
+  doneJobIDs = _doneJobIDs;
+  const jobs = new Map((await scrapeQueue.getJobs(jobIDs)).map(x => [x.id, x]));
+
+  const validJobStatuses: [string, NuQJobStatus][] = [];
   const validJobIDs: string[] = [];
 
-  for (const [id, status] of jobStatuses) {
+  for (const id of jobIDs) {
     if (throttledJobsSet.has(id)) {
-      validJobStatuses.push([id, "prioritized"]);
+      validJobStatuses.push([id, "queued"]);
       validJobIDs.push(id);
-    } else if (
-      status !== "failed" &&
-      status !== "unknown"
-    ) {
-      validJobStatuses.push([id, status]);
-      validJobIDs.push(id);
+    } else {
+      const job = jobs.get(id);
+      if (job && job.status !== "failed") {
+        validJobStatuses.push([id, job.status]);
+        validJobIDs.push(id);
+      }
     }
   }
 
   const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] =
     sc.cancelled
       ? "cancelled"
-      : validJobStatuses.every((x) => x[1] === "completed")
+      : validJobStatuses.every(x => x[1] === "completed")
         ? "completed"
         : "scraping";
 
   jobIDs = validJobIDs; // Use validJobIDs instead of jobIDs for further processing
 
   const doneJobs = await getJobs(doneJobIDs);
-  const data = doneJobs.map((x) => x.returnvalue);
+  const data = doneJobs.map(x => x.returnvalue);
 
   await send(ws, {
     type: "catchup",
@@ -199,7 +190,7 @@ export async function crawlStatusWSController(
   } catch (err) {
     Sentry.captureException(err);
 
-    const id = uuidv4();
+    const id = uuidv7();
     let verbose = JSON.stringify(err);
     if (verbose === "{}") {
       if (err instanceof Error) {
@@ -221,9 +212,7 @@ export async function crawlStatusWSController(
     );
     return close(ws, 1011, {
       type: "error",
-      error:
-        "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-        id,
+      error: getErrorContactMessage(id),
     });
   }
 }

@@ -1,16 +1,15 @@
 import si from "systeminformation";
+import { config } from "../config";
 import { Mutex } from "async-mutex";
 import os from "os";
 import fs from "fs";
 import { logger } from "../lib/logger";
 
-const IS_KUBERNETES = process.env.IS_KUBERNETES === "true";
+const IS_KUBERNETES = config.IS_KUBERNETES;
 
-const MAX_CPU = process.env.MAX_CPU ? parseFloat(process.env.MAX_CPU) : 0.8;
-const MAX_RAM = process.env.MAX_RAM ? parseFloat(process.env.MAX_RAM) : 0.8;
-const CACHE_DURATION = process.env.SYS_INFO_MAX_CACHE_DURATION
-  ? parseFloat(process.env.SYS_INFO_MAX_CACHE_DURATION)
-  : 150;
+const MAX_CPU = config.MAX_CPU;
+const MAX_RAM = config.MAX_RAM;
+const CACHE_DURATION = config.SYS_INFO_MAX_CACHE_DURATION;
 
 class SystemMonitor {
   private static instance: SystemMonitor;
@@ -147,7 +146,7 @@ class SystemMonitor {
   private parseCpuList(cpuList: string): number[] {
     const ranges = cpuList.split(",");
     const cpus: number[] = [];
-    ranges.forEach((range) => {
+    ranges.forEach(range => {
       const [startStr, endStr] = range.split("-");
       const start = parseInt(startStr, 10);
       const end = endStr !== undefined ? parseInt(endStr, 10) : start;

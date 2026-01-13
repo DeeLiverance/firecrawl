@@ -8,14 +8,15 @@ import {
   saveLlmsTextToCache,
 } from "./generate-llmstxt-supabase";
 import { billTeam } from "../../services/billing/credit_billing";
-import { logJob } from "../../services/logging/log_job";
+import { logLlmsTxt } from "../../services/logging/log_job";
 import { getModel } from "../generic-ai";
 import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
-import { CostTracking } from "../extract/extraction-service";
+import { CostTracking } from "../cost-tracking";
 import { getACUCTeam } from "../../controllers/auth";
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
   teamId: string;
+  apiKeyId: number | null;
   url: string;
   maxUrls: number;
   showFullText: boolean;
@@ -44,28 +45,36 @@ function limitPages(fullText: string, maxPages: number): string {
 // Helper function to limit llmstxt entries
 function limitLlmsTxtEntries(llmstxt: string, maxEntries: number): string {
   // Split by newlines
-  const lines = llmstxt.split('\n');
-  
+  const lines = llmstxt.split("\n");
+
   // Find the header line (starts with #)
-  const headerIndex = lines.findIndex(line => line.startsWith('#'));
+  const headerIndex = lines.findIndex(line => line.startsWith("#"));
   if (headerIndex === -1) return llmstxt;
-  
+
   // Get the header and the entries
   const header = lines[headerIndex];
-  const entries = lines.filter(line => line.startsWith('- ['));
-  
+  const entries = lines.filter(line => line.startsWith("- ["));
+
   // Take only the requested number of entries
   const limitedEntries = entries.slice(0, maxEntries);
-  
+
   // Reconstruct the text
-  return `${header}\n\n${limitedEntries.join('\n')}`;
+  return `${header}\n\n${limitedEntries.join("\n")}`;
 }
 
 export async function performGenerateLlmsTxt(
   options: GenerateLLMsTextServiceOptions,
 ) {
-  const { generationId, teamId, url, maxUrls = 100, showFullText, cache = true, subId } =
-    options;
+  const {
+    generationId,
+    teamId,
+    url,
+    maxUrls = 100,
+    showFullText,
+    cache = true,
+    subId,
+    apiKeyId,
+  } = options;
   const startTime = Date.now();
   const logger = _logger.child({
     module: "generate-llmstxt",
@@ -81,16 +90,24 @@ export async function performGenerateLlmsTxt(
     const effectiveMaxUrls = Math.min(maxUrls, 5000);
 
     // Check cache first, unless cache is set to false
-    const cachedResult = cache ? await getLlmsTextFromCache(url, effectiveMaxUrls) : null;
+    const cachedResult = cache
+      ? await getLlmsTextFromCache(url, effectiveMaxUrls)
+      : null;
     if (cachedResult) {
       logger.info("Found cached LLMs text", { url });
 
       // Limit pages and remove separators before returning
-      const limitedFullText = limitPages(cachedResult.llmstxt_full, effectiveMaxUrls);
+      const limitedFullText = limitPages(
+        cachedResult.llmstxt_full,
+        effectiveMaxUrls,
+      );
       const cleanFullText = removePageSeparators(limitedFullText);
-      
+
       // Limit llmstxt entries to match maxUrls
-      const limitedLlmsTxt = limitLlmsTxtEntries(cachedResult.llmstxt, effectiveMaxUrls);
+      const limitedLlmsTxt = limitLlmsTxtEntries(
+        cachedResult.llmstxt,
+        effectiveMaxUrls,
+      );
 
       // Update final result with cached text
       await updateGeneratedLlmsTxt(generationId, {
@@ -137,7 +154,7 @@ export async function performGenerateLlmsTxt(
       const batch = urls.slice(i, i + 10);
 
       const batchResults = await Promise.all(
-        batch.map(async (url) => {
+        batch.map(async url => {
           _logger.debug(`Scraping URL: ${url}`);
           try {
             const document = await scrapeDocument(
@@ -148,6 +165,8 @@ export async function performGenerateLlmsTxt(
                 timeout: 30000,
                 isSingleUrl: true,
                 flags: acuc?.flags ?? null,
+                apiKeyId,
+                requestId: generationId,
               },
               [],
               logger,
@@ -168,7 +187,6 @@ export async function performGenerateLlmsTxt(
               model: getModel("gpt-4o-mini", "openai"),
               options: {
                 systemPrompt: "",
-                mode: "llm",
                 schema: descriptionSchema,
                 prompt: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose.`,
               },
@@ -179,6 +197,11 @@ export async function performGenerateLlmsTxt(
                   module: "generate-llmstxt",
                   method: "generateDescription",
                 },
+              },
+              metadata: {
+                teamId,
+                functionId: "generate-llmstxt",
+                llmsTxtId: generationId,
               },
             });
 
@@ -227,28 +250,24 @@ export async function performGenerateLlmsTxt(
     });
 
     // Log job with token usage and sources
-    await logJob({
-      job_id: generationId,
-      success: true,
-      message: "LLMs text generation completed",
-      num_docs: urls.length,
-      docs: [{ llmstxt: llmstxt, llmsfulltxt: llmsFulltxt }],
-      time_taken: (Date.now() - startTime) / 1000,
+    await logLlmsTxt({
+      id: generationId,
+      request_id: generationId,
+      url,
       team_id: teamId,
-      mode: "llmstxt",
-      url: url,
-      scrapeOptions: options,
-      origin: "api",
-      num_tokens: 0,
-      tokens_billed: 0,
-      sources: {},
-      cost_tracking: costTracking,
-      credits_billed: urls.length,
-      zeroDataRetention: false,
+      options: {
+        maxUrls: maxUrls,
+        showFullText: showFullText,
+        cache: cache,
+      },
+      num_urls: urls.length,
+      cost_tracking: costTracking.toJSON(),
+      credits_cost: urls.length,
+      result: { llmstxt, llmsfulltxt: llmsFulltxt },
     });
 
     // Bill team for usage
-    billTeam(teamId, subId, urls.length, logger).catch((error) => {
+    billTeam(teamId, subId, urls.length, apiKeyId, logger).catch(error => {
       logger.error(`Failed to bill team ${teamId} for ${urls.length} urls`, {
         teamId,
         count: urls.length,

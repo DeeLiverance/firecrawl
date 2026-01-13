@@ -1,11 +1,12 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
+import { config } from "../config";
 import { RateLimiterMode } from "../types";
 import Redis from "ioredis";
 import type { AuthCreditUsageChunk } from "../controllers/v1/types";
 
-export const redisRateLimitClient = new Redis(
-  process.env.REDIS_RATE_LIMIT_URL!,
-);
+export const redisRateLimitClient = new Redis(config.REDIS_RATE_LIMIT_URL!, {
+  enableAutoPipelining: true,
+});
 
 const createRateLimiter = (keyPrefix, points) =>
   new RateLimiterRedis({
@@ -14,13 +15,6 @@ const createRateLimiter = (keyPrefix, points) =>
     points,
     duration: 60, // Duration in seconds
   });
-
-export const testSuiteRateLimiter = new RateLimiterRedis({
-  storeClient: redisRateLimitClient,
-  keyPrefix: "test-suite",
-  points: 10000,
-  duration: 60, // Duration in seconds
-});
 
 const fallbackRateLimits: AuthCreditUsageChunk["rate_limits"] = {
   crawl: 15,
@@ -41,6 +35,6 @@ export function getRateLimiter(
 ): RateLimiterRedis {
   return createRateLimiter(
     `${mode}`,
-    (rate_limits?.[mode] ?? fallbackRateLimits?.[mode] ?? 500),
+    rate_limits?.[mode] ?? fallbackRateLimits?.[mode] ?? 500,
   );
 }

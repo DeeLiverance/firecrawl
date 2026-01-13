@@ -1,4 +1,5 @@
 import request from "supertest";
+import { config } from "../../config";
 import { configDotenv } from "dotenv";
 import { ScrapeRequestInput } from "../../controllers/v1/types";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
@@ -8,23 +9,20 @@ const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v1 API Routes", () => {
   beforeAll(() => {
-    process.env.USE_DB_AUTHENTICATION = "true";
+    config.USE_DB_AUTHENTICATION = true;
   });
 
   afterAll(() => {
-    delete process.env.USE_DB_AUTHENTICATION;
+    delete config.USE_DB_AUTHENTICATION;
   });
 
   describe("GET /is-production", () => {
     it.concurrent("should return the production status", async () => {
       const response: any = await request(TEST_URL).get("/is-production");
 
-      console.log(
-        "process.env.USE_DB_AUTHENTICATION",
-        process.env.USE_DB_AUTHENTICATION,
-      );
-      console.log("?", process.env.USE_DB_AUTHENTICATION === "true");
-      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+      console.log("config.USE_DB_AUTHENTICATION", config.USE_DB_AUTHENTICATION);
+      console.log("?", config.USE_DB_AUTHENTICATION);
+      const useDbAuthentication = config.USE_DB_AUTHENTICATION;
       console.log("!!useDbAuthentication", !!useDbAuthentication);
       console.log("!useDbAuthentication", !useDbAuthentication);
 
@@ -49,7 +47,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response = await request(TEST_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -78,7 +76,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -130,7 +128,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -187,7 +185,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -215,10 +213,10 @@ describe("E2E Tests for v1 API Routes", () => {
         };
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
-        await new Promise((r) => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 6000));
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -243,10 +241,10 @@ describe("E2E Tests for v1 API Routes", () => {
         };
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
-        await new Promise((r) => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 6000));
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -273,7 +271,7 @@ describe("E2E Tests for v1 API Routes", () => {
         };
         const responseWithoutRemoveTags: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
         expect(responseWithoutRemoveTags.statusCode).toBe(200);
@@ -299,7 +297,7 @@ describe("E2E Tests for v1 API Routes", () => {
         };
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequestWithRemoveTags);
 
@@ -322,10 +320,10 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://httpstat.us/400" });
-        await new Promise((r) => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 5000));
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -344,10 +342,10 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://httpstat.us/401" });
-        await new Promise((r) => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 5000));
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -365,7 +363,7 @@ describe("E2E Tests for v1 API Routes", () => {
     // it.concurrent('should return a successful response for a scrape with 403 page', async () => {
     //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
-    //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set('Authorization', `Bearer ${config.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
     //     .send({ url: 'https://httpstat.us/403' });
     //   await new Promise((r) => setTimeout(r, 5000));
@@ -385,10 +383,10 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://httpstat.us/404" });
-        await new Promise((r) => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 5000));
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -405,7 +403,7 @@ describe("E2E Tests for v1 API Routes", () => {
     // it.concurrent('should return a successful response for a scrape with 405 page', async () => {
     //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
-    //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set('Authorization', `Bearer ${config.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
     //     .send({ url: 'https://httpstat.us/405' });
     //   await new Promise((r) => setTimeout(r, 5000));
@@ -423,7 +421,7 @@ describe("E2E Tests for v1 API Routes", () => {
     // it.concurrent('should return a successful response for a scrape with 500 page', async () => {
     //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
-    //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set('Authorization', `Bearer ${config.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
     //     .send({ url: 'https://httpstat.us/500' });
     //   await new Promise((r) => setTimeout(r, 5000));
@@ -443,7 +441,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev", timeout: 1000 });
 
@@ -462,7 +460,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -494,7 +492,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -525,7 +523,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
 
@@ -575,7 +573,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(mapRequest);
 
@@ -601,7 +599,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(mapRequest);
 
@@ -629,7 +627,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(mapRequest);
 
@@ -661,7 +659,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(mapRequest);
 
@@ -694,7 +692,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response: any = await request(TEST_URL)
           .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(mapRequest);
 
@@ -720,7 +718,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(TEST_URL)
         .post("/v1/map")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(mapRequest);
 
@@ -745,7 +743,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response = await request(TEST_URL)
         .post("/v1/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -768,7 +766,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent("should return a successful response", async () => {
       const response = await request(TEST_URL)
         .post("/v1/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({ url: "https://firecrawl.dev" });
 
@@ -787,7 +785,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const crawlResponse = await request(TEST_URL)
           .post("/v1/crawl")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({
             url: "https://firecrawl.dev",
@@ -801,21 +799,21 @@ describe("E2E Tests for v1 API Routes", () => {
         while (!isFinished) {
           response = await request(TEST_URL)
             .get(`/v1/crawl/${crawlResponse.body.id}`)
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+            .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
           expect(response.statusCode).toBe(200);
           expect(response.body).toHaveProperty("status");
           isFinished = response.body.status === "completed";
 
           if (!isFinished) {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+        await new Promise(resolve => setTimeout(resolve, 1000)); // wait for data to be saved on the database
         const completedResponse = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
         const urls = completedResponse.body.data.map(
           (item: any) => item.metadata?.sourceURL,
@@ -843,7 +841,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const crawlResponse = await request(TEST_URL)
           .post("/v1/crawl")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({
             url: "https://firecrawl.dev",
@@ -857,21 +855,21 @@ describe("E2E Tests for v1 API Routes", () => {
         while (!isFinished) {
           response = await request(TEST_URL)
             .get(`/v1/crawl/${crawlResponse.body.id}`)
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+            .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
           expect(response.statusCode).toBe(200);
           expect(response.body).toHaveProperty("status");
           isFinished = response.body.status === "completed";
 
           if (!isFinished) {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+        await new Promise(resolve => setTimeout(resolve, 1000)); // wait for data to be saved on the database
         const completedResponse = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
         const urls = completedResponse.body.data.map(
           (item: any) => item.metadata?.sourceURL,
@@ -889,7 +887,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const crawlResponse = await request(TEST_URL)
           .post("/v1/crawl")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com",
@@ -899,7 +897,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
         const response = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("status");
         expect(["active", "waiting", "completed", "scraping"]).toContain(
@@ -910,16 +908,16 @@ describe("E2E Tests for v1 API Routes", () => {
         while (!isCompleted) {
           const statusCheckResponse = await request(TEST_URL)
             .get(`/v1/crawl/${crawlResponse.body.id}`)
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+            .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
           expect(statusCheckResponse.statusCode).toBe(200);
           isCompleted = statusCheckResponse.body.status === "completed";
           if (!isCompleted) {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
         const completedResponse = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
         expect(completedResponse.statusCode).toBe(200);
         expect(completedResponse.body).toHaveProperty("status");
@@ -972,7 +970,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const response = await request(TEST_URL)
           .get("/v1/crawl/invalidJobId")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
         expect(response.statusCode).toBe(404);
       },
     );
@@ -982,7 +980,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const crawlResponse = await request(TEST_URL)
           .post("/v1/crawl")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://docs.firecrawl.dev" });
         expect(crawlResponse.statusCode).toBe(200);
@@ -992,21 +990,21 @@ describe("E2E Tests for v1 API Routes", () => {
         while (!isCompleted) {
           const response = await request(TEST_URL)
             .get(`/v1/crawl/${crawlResponse.body.id}`)
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+            .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
           expect(response.statusCode).toBe(200);
           expect(response.body).toHaveProperty("status");
 
           if (response.body.status === "completed") {
             isCompleted = true;
           } else {
-            await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+            await new Promise(r => setTimeout(r, 1000)); // Wait for 1 second before checking again
           }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+        await new Promise(resolve => setTimeout(resolve, 1000)); // wait for data to be saved on the database
         const completedResponse = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
         expect(completedResponse.body).toHaveProperty("status");
         expect(completedResponse.body.status).toBe("completed");
@@ -1018,7 +1016,7 @@ describe("E2E Tests for v1 API Routes", () => {
         expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
 
         const childrenLinks = completedResponse.body.data.filter(
-          (doc) => doc.metadata && doc.metadata.sourceURL,
+          doc => doc.metadata && doc.metadata.sourceURL,
         );
 
         expect(childrenLinks.length).toBe(completedResponse.body.data.length);
@@ -1031,25 +1029,25 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const crawlResponse = await request(TEST_URL)
           .post("/v1/crawl")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://docs.firecrawl.dev", limit: 10 });
 
         expect(crawlResponse.statusCode).toBe(200);
 
-        await new Promise((r) => setTimeout(r, 10000));
+        await new Promise(r => setTimeout(r, 10000));
 
         const responseCancel = await request(TEST_URL)
           .delete(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
         expect(responseCancel.statusCode).toBe(200);
         expect(responseCancel.body).toHaveProperty("status");
         expect(responseCancel.body.status).toBe("cancelled");
 
-        await new Promise((r) => setTimeout(r, 10000));
+        await new Promise(r => setTimeout(r, 10000));
         const completedResponse = await request(TEST_URL)
           .get(`/v1/crawl/${crawlResponse.body.id}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`);
 
         expect(completedResponse.statusCode).toBe(200);
         expect(completedResponse.body).toHaveProperty("status");

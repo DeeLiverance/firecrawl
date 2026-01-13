@@ -19,16 +19,21 @@ import {
   DNSResolutionError,
   SiteError,
   SSLError,
-  TimeoutError,
   UnsupportedFileError,
   FEPageLoadFailed,
+  ProxySelectionError,
 } from "../../error";
 import * as Sentry from "@sentry/node";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
-import { getInnerJSON } from "../../../../lib/html-transformer";
-import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
+import { getInnerJson } from "@mendable/firecrawl-rs";
+import { hasFormatOfType } from "../../../../lib/format-utils";
+import { Action } from "../../../../controllers/v1/types";
+import { AbortManagerThrownError } from "../../lib/abortManager";
+import { youtubePostprocessor } from "../../postprocessors/youtube";
+import { withSpan, setSpanAttributes } from "../../../../lib/otel-tracer";
+import { getBrandingScript } from "./brandingScript";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -42,424 +47,534 @@ async function performFireEngineScrape<
   meta: Meta,
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
-  timeout: number,
   mock: MockState | null,
   abort?: AbortSignal,
   production = true,
 ): Promise<FireEngineCheckStatusSuccess> {
-  const scrape = await fireEngineScrape(
-    logger.child({ method: "fireEngineScrape" }),
-    request,
-    mock,
-    abort,
-    production,
-  );
+  return withSpan("engine.fire-engine.perform_scrape", async span => {
+    const startTime = Date.now();
+    let pollCount = 0;
 
-  const startTime = Date.now();
-  const errorLimit = 3;
-  let errors: any[] = [];
-  let status: FireEngineCheckStatusSuccess | undefined = undefined;
+    setSpanAttributes(span, {
+      "fire-engine.url": request.url,
+      "fire-engine.priority": request.priority,
+      "fire-engine.wait": (request as any).wait,
+      "fire-engine.screenshot": (request as any).screenshot,
+      "fire-engine.fullpage": (request as any).fullPage,
+      "fire-engine.proxy": (request as any).proxy,
+      "fire-engine.mobile": (request as any).mobile,
+      "fire-engine.skip_tls": (request as any).skipTlsVerification,
+      "fire-engine.production": production,
+    });
+    const scrape = await fireEngineScrape(
+      meta,
+      logger.child({ method: "fireEngineScrape" }),
+      request,
+      mock,
+      abort,
+      production,
+    );
 
-  while (status === undefined) {
-    abort?.throwIfAborted();
-    if (errors.length >= errorLimit) {
-      logger.error("Error limit hit.", { errors });
-      fireEngineDelete(
-        logger.child({
-          method: "performFireEngineScrape/fireEngineDelete",
-          afterErrors: errors,
-        }),
-        scrape.jobId,
-        mock,
-        undefined,
-        production,
-      );
-      throw new Error("Error limit hit. See e.cause.errors for errors.", {
-        cause: { errors },
-      });
-    }
+    let status: FireEngineCheckStatusSuccess | undefined = undefined;
+    if ((scrape as any).processing) {
+      const errorLimit = 3;
+      let errors: any[] = [];
 
-    if (Date.now() - startTime > timeout) {
-      logger.info(
-        "Fire-engine was unable to scrape the page before timing out.",
-        { errors, timeout },
-      );
-      throw new TimeoutError(
-        "Fire-engine was unable to scrape the page before timing out",
-        { cause: { errors, timeout } },
-      );
-    }
+      while (status === undefined) {
+        if (errors.length >= errorLimit) {
+          logger.error("Error limit hit.", { errors });
+          fireEngineDelete(
+            logger.child({
+              method: "performFireEngineScrape/fireEngineDelete",
+              afterErrors: errors,
+            }),
+            (scrape as any).jobId,
+            mock,
+            undefined,
+            production,
+          ).catch(e => {
+            logger.error("Failed to delete job from Fire Engine", { error: e });
+          });
+          throw new Error("Error limit hit. See e.cause.errors for errors.", {
+            cause: { errors },
+          });
+        }
 
-    try {
-      status = await fireEngineCheckStatus(
-        meta,
-        logger.child({ method: "fireEngineCheckStatus" }),
-        scrape.jobId,
-        mock,
-        abort,
-        production,
-      );
-    } catch (error) {
-      if (error instanceof StillProcessingError) {
-        // nop
-      } else if (
-        error instanceof EngineError ||
-        error instanceof SiteError ||
-        error instanceof SSLError ||
-        error instanceof DNSResolutionError ||
-        error instanceof ActionError ||
-        error instanceof UnsupportedFileError ||
-        error instanceof FEPageLoadFailed
-      ) {
-        fireEngineDelete(
-          logger.child({
-            method: "performFireEngineScrape/fireEngineDelete",
-            afterError: error,
-          }),
-          scrape.jobId,
-          mock,
-          undefined,
-          production,
-        );
-        logger.debug("Fire-engine scrape job failed.", {
-          error,
-          jobId: scrape.jobId,
-        });
-        throw error;
-      } else if (error instanceof TimeoutSignal) {
-        fireEngineDelete(
-          logger.child({
-            method: "performFireEngineScrape/fireEngineDelete",
-            afterError: error,
-          }),
-          scrape.jobId,
-          mock,
-          undefined,
-          production,
-        );
-        throw error;
-      } else {
-        Sentry.captureException(error);
-        errors.push(error);
-        logger.debug(
-          `An unexpeceted error occurred while calling checkStatus. Error counter is now at ${errors.length}.`,
-          { error, jobId: scrape.jobId },
-        );
+        meta.abort.throwIfAborted();
+
+        try {
+          pollCount++;
+          status = await fireEngineCheckStatus(
+            meta,
+            logger.child({ method: "fireEngineCheckStatus" }),
+            (scrape as any).jobId,
+            mock,
+            abort,
+            production,
+          );
+        } catch (error) {
+          if (error instanceof StillProcessingError) {
+            // nop
+          } else if (
+            error instanceof EngineError ||
+            error instanceof SiteError ||
+            error instanceof SSLError ||
+            error instanceof DNSResolutionError ||
+            error instanceof ActionError ||
+            error instanceof UnsupportedFileError ||
+            error instanceof FEPageLoadFailed ||
+            error instanceof ProxySelectionError
+          ) {
+            fireEngineDelete(
+              logger.child({
+                method: "performFireEngineScrape/fireEngineDelete",
+                afterError: error,
+              }),
+              (scrape as any).jobId,
+              mock,
+              undefined,
+              production,
+            ).catch(e => {
+              logger.error("Failed to delete job from Fire Engine", {
+                error: e,
+              });
+            });
+            logger.debug("Fire-engine scrape job failed.", {
+              error,
+              jobId: (scrape as any).jobId,
+            });
+            throw error;
+          } else if (error instanceof AbortManagerThrownError) {
+            fireEngineDelete(
+              logger.child({
+                method: "performFireEngineScrape/fireEngineDelete",
+                afterError: error,
+              }),
+              (scrape as any).jobId,
+              mock,
+              undefined,
+              production,
+            ).catch(e => {
+              logger.error("Failed to delete job from Fire Engine", {
+                error: e,
+              });
+            });
+            throw error;
+          } else {
+            errors.push(error);
+            logger.debug(
+              `An unexpeceted error occurred while calling checkStatus. Error counter is now at ${errors.length}.`,
+              { error, jobId: (scrape as any).jobId },
+            );
+            Sentry.captureException(error);
+          }
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+    } else {
+      status = scrape as FireEngineCheckStatusSuccess;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
+    await specialtyScrapeCheck(
+      logger.child({
+        method: "performFireEngineScrape/specialtyScrapeCheck",
+      }),
+      status.responseHeaders,
+      status,
+    );
 
-  await specialtyScrapeCheck(
-    logger.child({
-      method: "performFireEngineScrape/specialtyScrapeCheck",
-    }),
-    status.responseHeaders,
-    status,
-  );
+    const contentType =
+      (Object.entries(status.responseHeaders ?? {}).find(
+        x => x[0].toLowerCase() === "content-type",
+      ) ?? [])[1] ?? "";
 
-  const contentType = (Object.entries(status.responseHeaders ?? {}).find(
-    (x) => x[0].toLowerCase() === "content-type",
-  ) ?? [])[1] ?? "";
+    if (contentType.includes("application/json")) {
+      status.content = await getInnerJson(status.content);
+    }
 
-  if (contentType.includes("application/json")) {
-    status.content = await getInnerJSON(status.content);
-  }
+    if (status.file) {
+      const content = status.file.content;
+      delete status.file;
+      status.content = Buffer.from(content, "base64").toString("utf8"); // TODO: handle other encodings via Content-Type tag
+    }
 
-  if (status.file) {
-    const content = status.file.content;
-    delete status.file;
-    status.content = Buffer.from(content, "base64").toString("utf8"); // TODO: handle other encodings via Content-Type tag
-  }
+    fireEngineDelete(
+      logger.child({
+        method: "performFireEngineScrape/fireEngineDelete",
+      }),
+      (scrape as any).jobId,
+      mock,
+      undefined,
+      production,
+    ).catch(e => {
+      logger.error("Failed to delete job from Fire Engine", { error: e });
+    });
 
-  fireEngineDelete(
-    logger.child({
-      method: "performFireEngineScrape/fireEngineDelete",
-    }),
-    scrape.jobId,
-    mock,
-    undefined,
-    production,
-  );
+    setSpanAttributes(span, {
+      "fire-engine.poll_count": pollCount,
+      "fire-engine.duration_ms": Date.now() - startTime,
+      "fire-engine.status_code": status.pageStatusCode,
+      "fire-engine.content_length": status.content?.length,
+      "fire-engine.has_screenshot": !!status.screenshot,
+      "fire-engine.has_pdf": !!(status as any).pdf,
+      "fire-engine.job_id": (scrape as any).jobId,
+    });
 
-  return status;
+    return status;
+  });
 }
 
 export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const actions: Action[] = [
-    // Transform waitFor option into an action (unsupported by chrome-cdp)
-    ...(meta.options.waitFor !== 0
-      ? [
-          { 
-            type: "wait" as const,
-            milliseconds: meta.options.waitFor > 30000 ? 30000 : meta.options.waitFor,
-          },
-        ]
-      : []),
-
-    // Include specified actions
-    ...(meta.options.actions ?? []),
-
-    // Transform screenshot format into an action (unsupported by chrome-cdp)
-    ...(meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage")
-      ? [
-          {
-            type: "screenshot" as const,
-            fullPage: meta.options.formats.includes("screenshot@fullPage"),
-          },
-        ]
-      : []),
-  ];
-
-  const totalWait = actions.reduce(
-    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
-    0,
-  );
-
-  const timeout = (timeToRun ?? 300000) + totalWait;
-
-  // const shouldABTest = false;
-  const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
-
-  const request: FireEngineScrapeRequestCommon &
-    FireEngineScrapeRequestChromeCDP = {
-    url: meta.rewrittenUrl ?? meta.url,
-    engine: "chrome-cdp",
-    instantReturn: true,
-    skipTlsVerification: meta.options.skipTlsVerification,
-    headers: meta.options.headers,
-    ...(actions.length > 0
-      ? {
-          actions,
-        }
-      : {}),
-    priority: meta.internalOptions.priority,
-    geolocation: meta.options.geolocation ?? meta.options.location,
-    mobile: meta.options.mobile,
-    timeout, // TODO: better timeout logic
-    disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
-    mobileProxy: meta.featureFlags.has("stealthProxy"),
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
-    zeroDataRetention: meta.internalOptions.zeroDataRetention,
-  };
-
-  if (shouldABTest) {
-    (async () => {
-      try {
-        meta.logger.info("AB-testing fire-engine", { request });
-
-        await performFireEngineScrape(
-          meta,
-          meta.logger.child({
-            method: "scrapeURLWithFireEngineChromeCDP/callFireEngineAB",
-            request,
-          }),
-          request,
-          timeout,
-          meta.mock,
-          meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-          false,
-        );
-
-        meta.logger.info("AB-testing fire-engine success", { request });
-      } catch (error) {
-        meta.logger.error("AB-testing fire-engine failed", { error });
-      }
-    })();
-  }
-
-  let response = await performFireEngineScrape(
-    meta,
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
-      request,
-    }),
-    request,
-    timeout,
-    meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-    true,
-  );
-
-  if (
-    meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage")
-  ) {
-    // meta.logger.debug(
-    //   "Transforming screenshots from actions into screenshot field",
-    //   { screenshots: response.screenshots },
-    // );
-    if (response.screenshots) {
-      response.screenshot = response.screenshots.slice(-1)[0];
-      response.screenshots = response.screenshots.slice(0, -1);
-    }
-    // meta.logger.debug("Screenshot transformation done", {
-    //   screenshots: response.screenshots,
-    //   screenshot: response.screenshot,
-    // });
-  }
-
-  if (!response.url) {
-    meta.logger.warn("Fire-engine did not return the response's URL", {
-      response,
-      sourceURL: meta.url,
+  return withSpan("engine.fire-engine.chrome-cdp", async span => {
+    setSpanAttributes(span, {
+      "engine.type": "fire-engine-chrome-cdp",
+      "engine.url": meta.url,
+      "engine.team_id": meta.internalOptions.teamId,
     });
-  }
+    const actions: Action[] = [
+      // Transform waitFor option into an action (unsupported by chrome-cdp)
+      ...(meta.options.waitFor !== 0
+        ? [
+            {
+              type: "wait" as const,
+              milliseconds:
+                meta.options.waitFor > 30000 ? 30000 : meta.options.waitFor,
+            },
+          ]
+        : []),
 
-  return {
-    url: response.url ?? meta.url,
+      // Include specified actions
+      ...(meta.options.actions ?? []),
 
-    html: response.content,
-    error: response.pageError,
-    statusCode: response.pageStatusCode,
+      // Transform screenshot format into an action (unsupported by chrome-cdp)
+      ...(hasFormatOfType(meta.options.formats, "screenshot")
+        ? [
+            {
+              type: "screenshot" as const,
+              fullPage:
+                hasFormatOfType(meta.options.formats, "screenshot")?.fullPage ||
+                false,
+              ...(hasFormatOfType(meta.options.formats, "screenshot")?.viewport
+                ? {
+                    viewport: hasFormatOfType(
+                      meta.options.formats,
+                      "screenshot",
+                    )!.viewport,
+                  }
+                : {}),
+            },
+          ]
+        : []),
+      ...(hasFormatOfType(meta.options.formats, "branding")
+        ? [
+            {
+              type: "executeJavascript" as const,
+              script: getBrandingScript(),
+            },
+          ]
+        : []),
+    ];
 
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    const totalWait = actions.reduce(
+      (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
+      0,
+    );
 
-    screenshot: response.screenshot,
-    ...(actions.length > 0
-      ? {
-          actions: {
-            screenshots: response.screenshots ?? [],
-            scrapes: response.actionContent ?? [],
-            javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
-            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => x.result.link),
-          },
+    const shouldAllowMedia =
+      hasFormatOfType(meta.options.formats, "branding") ||
+      youtubePostprocessor.shouldRun(
+        meta,
+        new URL(meta.rewrittenUrl ?? meta.url),
+      );
+
+    const request: FireEngineScrapeRequestCommon &
+      FireEngineScrapeRequestChromeCDP = {
+      url: meta.rewrittenUrl ?? meta.url,
+      engine: "chrome-cdp",
+      instantReturn: false,
+      skipTlsVerification: meta.options.skipTlsVerification,
+      headers: meta.options.headers,
+      ...(actions.length > 0
+        ? {
+            actions,
+          }
+        : {}),
+      priority: meta.internalOptions.priority,
+      geolocation: meta.options.location,
+      mobile: meta.options.mobile,
+      timeout: meta.abort.scrapeTimeout() ?? 300000,
+      disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
+      mobileProxy: meta.featureFlags.has("stealthProxy"),
+      saveScrapeResultToGCS:
+        !meta.internalOptions.zeroDataRetention &&
+        meta.internalOptions.saveScrapeResultToGCS,
+      zeroDataRetention: meta.internalOptions.zeroDataRetention,
+      ...(shouldAllowMedia ? { blockMedia: false } : {}),
+    };
+
+    let response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+        request,
+      }),
+      request,
+      meta.mock,
+      meta.abort.asSignal(),
+      true,
+    );
+
+    if (hasFormatOfType(meta.options.formats, "screenshot")) {
+      // meta.logger.debug(
+      //   "Transforming screenshots from actions into screenshot field",
+      //   { screenshots: response.screenshots },
+      // );
+      if (response.screenshots) {
+        response.screenshot = response.screenshots.slice(-1)[0];
+        response.screenshots = response.screenshots.slice(0, -1);
+      }
+      // meta.logger.debug("Screenshot transformation done", {
+      //   screenshots: response.screenshots,
+      //   screenshot: response.screenshot,
+      // });
+    }
+
+    if (!response.url) {
+      meta.logger.warn("Fire-engine did not return the response's URL", {
+        response,
+        sourceURL: meta.url,
+      });
+    }
+
+    const javascriptReturns = (response.actionResults ?? [])
+      .filter(x => x.type === "executeJavascript")
+      .map(x => {
+        const rawReturn = (x.result as { return: string }).return;
+        try {
+          const parsed = JSON.parse(rawReturn);
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            "type" in parsed &&
+            typeof (parsed as any).type === "string" &&
+            "value" in parsed
+          ) {
+            return {
+              type: String((parsed as any).type),
+              value: (parsed as any).value,
+            };
+          }
+
+          return {
+            type: "unknown",
+            value: parsed,
+          };
+        } catch (error) {
+          meta.logger.warn("Failed to parse executeJavascript return", {
+            error,
+          });
+          return {
+            type: "unknown",
+            value: rawReturn,
+          };
         }
-      : {}),
+      });
 
-    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
-  };
+    return {
+      url: response.url ?? meta.url,
+
+      html: response.content,
+      error: response.pageError,
+      statusCode: response.pageStatusCode,
+
+      contentType:
+        (Object.entries(response.responseHeaders ?? {}).find(
+          x => x[0].toLowerCase() === "content-type",
+        ) ?? [])[1] ?? undefined,
+
+      screenshot: response.screenshot,
+      ...(actions.length > 0
+        ? {
+            actions: {
+              screenshots: response.screenshots ?? [],
+              scrapes: response.actionContent ?? [],
+              javascriptReturns,
+              pdfs: (response.actionResults ?? [])
+                .filter(x => x.type === "pdf")
+                .map(x => x.result.link),
+            },
+          }
+        : {}),
+
+      proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+      youtubeTranscriptContent: response.youtubeTranscriptContent,
+      timezone: response.timezone,
+    };
+  });
 }
 
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const totalWait = meta.options.waitFor;
-  const timeout = (timeToRun ?? 300000) + totalWait;
-
-  const request: FireEngineScrapeRequestCommon &
-    FireEngineScrapeRequestPlaywright = {
-    url: meta.rewrittenUrl ?? meta.url,
-    engine: "playwright",
-    instantReturn: true,
-
-    headers: meta.options.headers,
-    priority: meta.internalOptions.priority,
-    screenshot: meta.options.formats.includes("screenshot"),
-    fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
-    wait: meta.options.waitFor,
-    geolocation: meta.options.geolocation ?? meta.options.location,
-    blockAds: meta.options.blockAds,
-    mobileProxy: meta.featureFlags.has("stealthProxy"),
-
-    timeout,
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
-    zeroDataRetention: meta.internalOptions.zeroDataRetention,
-  };
-
-  let response = await performFireEngineScrape(
-    meta,
-    meta.logger.child({
-      method: "scrapeURLWithFireEnginePlaywright/callFireEngine",
-      request,
-    }),
-    request,
-    timeout,
-    meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-  );
-
-  if (!response.url) {
-    meta.logger.warn("Fire-engine did not return the response's URL", {
-      response,
-      sourceURL: meta.url,
+  return withSpan("engine.fire-engine.playwright", async span => {
+    setSpanAttributes(span, {
+      "engine.type": "fire-engine-playwright",
+      "engine.url": meta.url,
+      "engine.team_id": meta.internalOptions.teamId,
     });
-  }
+    const totalWait = meta.options.waitFor;
 
-  return {
-    url: response.url ?? meta.url,
+    const request: FireEngineScrapeRequestCommon &
+      FireEngineScrapeRequestPlaywright = {
+      url: meta.rewrittenUrl ?? meta.url,
+      engine: "playwright",
+      instantReturn: false,
 
-    html: response.content,
-    error: response.pageError,
-    statusCode: response.pageStatusCode,
+      headers: meta.options.headers,
+      priority: meta.internalOptions.priority,
+      screenshot:
+        hasFormatOfType(meta.options.formats, "screenshot") !== undefined,
+      fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot")
+        ?.fullPage,
+      wait: meta.options.waitFor,
+      geolocation: meta.options.location,
+      blockAds: meta.options.blockAds,
+      mobileProxy: meta.featureFlags.has("stealthProxy"),
 
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+      timeout: meta.abort.scrapeTimeout() ?? 300000,
+      saveScrapeResultToGCS:
+        !meta.internalOptions.zeroDataRetention &&
+        meta.internalOptions.saveScrapeResultToGCS,
+      zeroDataRetention: meta.internalOptions.zeroDataRetention,
+    };
 
-    ...(response.screenshots !== undefined && response.screenshots.length > 0
-      ? {
-          screenshot: response.screenshots[0],
-        }
-      : {}),
+    let response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEnginePlaywright/callFireEngine",
+        request,
+      }),
+      request,
+      meta.mock,
+      meta.abort.asSignal(),
+    );
 
-    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
-  };
+    if (!response.url) {
+      meta.logger.warn("Fire-engine did not return the response's URL", {
+        response,
+        sourceURL: meta.url,
+      });
+    }
+
+    return {
+      url: response.url ?? meta.url,
+
+      html: response.content,
+      error: response.pageError,
+      statusCode: response.pageStatusCode,
+
+      contentType:
+        (Object.entries(response.responseHeaders ?? {}).find(
+          x => x[0].toLowerCase() === "content-type",
+        ) ?? [])[1] ?? undefined,
+
+      ...(response.screenshots !== undefined && response.screenshots.length > 0
+        ? {
+            screenshot: response.screenshots[0],
+          }
+        : {}),
+
+      proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+      timezone: response.timezone,
+    };
+  });
 }
 
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 30000;
-
-  const request: FireEngineScrapeRequestCommon &
-    FireEngineScrapeRequestTLSClient = {
-    url: meta.rewrittenUrl ?? meta.url,
-    engine: "tlsclient",
-    instantReturn: true,
-
-    headers: meta.options.headers,
-    priority: meta.internalOptions.priority,
-
-    atsv: meta.internalOptions.atsv,
-    geolocation: meta.options.geolocation ?? meta.options.location,
-    disableJsDom: meta.internalOptions.v0DisableJsDom,
-    mobileProxy: meta.featureFlags.has("stealthProxy"),
-
-    timeout,
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
-    zeroDataRetention: meta.internalOptions.zeroDataRetention,
-  };
-
-  let response = await performFireEngineScrape(
-    meta,
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineTLSClient/callFireEngine",
-      request,
-    }),
-    request,
-    timeout,
-    meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-  );
-
-  if (!response.url) {
-    meta.logger.warn("Fire-engine did not return the response's URL", {
-      response,
-      sourceURL: meta.url,
+  return withSpan("engine.fire-engine.tlsclient", async span => {
+    setSpanAttributes(span, {
+      "engine.type": "fire-engine-tlsclient",
+      "engine.url": meta.url,
+      "engine.team_id": meta.internalOptions.teamId,
     });
+    const request: FireEngineScrapeRequestCommon &
+      FireEngineScrapeRequestTLSClient = {
+      url: meta.rewrittenUrl ?? meta.url,
+      engine: "tlsclient",
+      instantReturn: false,
+
+      headers: meta.options.headers,
+      priority: meta.internalOptions.priority,
+
+      atsv: meta.internalOptions.atsv,
+      geolocation: meta.options.location,
+      disableJsDom: meta.internalOptions.v0DisableJsDom,
+      mobileProxy: meta.featureFlags.has("stealthProxy"),
+
+      timeout: meta.abort.scrapeTimeout() ?? 300000,
+      saveScrapeResultToGCS:
+        !meta.internalOptions.zeroDataRetention &&
+        meta.internalOptions.saveScrapeResultToGCS,
+      zeroDataRetention: meta.internalOptions.zeroDataRetention,
+    };
+
+    let response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEngineTLSClient/callFireEngine",
+        request,
+      }),
+      request,
+      meta.mock,
+      meta.abort.asSignal(),
+    );
+
+    if (!response.url) {
+      meta.logger.warn("Fire-engine did not return the response's URL", {
+        response,
+        sourceURL: meta.url,
+      });
+    }
+
+    return {
+      url: response.url ?? meta.url,
+
+      html: response.content,
+      error: response.pageError,
+      statusCode: response.pageStatusCode,
+
+      contentType:
+        (Object.entries(response.responseHeaders ?? {}).find(
+          x => x[0].toLowerCase() === "content-type",
+        ) ?? [])[1] ?? undefined,
+
+      proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+      timezone: response.timezone,
+    };
+  });
+}
+
+export function fireEngineMaxReasonableTime(
+  meta: Meta,
+  engine: "chrome-cdp" | "playwright" | "tlsclient",
+): number {
+  if (engine === "tlsclient") {
+    return 15000;
+  } else if (engine === "playwright") {
+    return (meta.options.waitFor ?? 0) + 30000;
+  } else {
+    return (
+      (meta.options.waitFor ?? 0) +
+      (meta.options.actions?.reduce(
+        (a, x) => (x.type === "wait" ? (x.milliseconds ?? 2500) + a : 250 + a),
+        0,
+      ) ?? 0) +
+      30000
+    );
   }
-
-  return {
-    url: response.url ?? meta.url,
-
-    html: response.content,
-    error: response.pageError,
-    statusCode: response.pageStatusCode,
-
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
-
-    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
-  };
 }

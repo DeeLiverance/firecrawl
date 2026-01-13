@@ -1,5 +1,5 @@
 import { RateLimiterMode } from "../types";
-import { getACUC, getACUCTeam } from "../controllers/auth";
+import { getACUCTeam } from "../controllers/auth";
 import { redisEvictConnection } from "../services/redis";
 import { logger } from "./logger";
 
@@ -32,7 +32,6 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   team_id,
   basePriority = 10,
-  from_extract = false,
 }: {
   team_id: string;
   basePriority?: number;
@@ -43,7 +42,12 @@ export async function getJobPriority({
   }
 
   try {
-    const acuc = await getACUCTeam(team_id, false, true, from_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl);
+    const acuc = await getACUCTeam(
+      team_id,
+      false,
+      true,
+      RateLimiterMode.Scrape,
+    );
 
     const setKey = SET_KEY_PREFIX + team_id;
 
@@ -64,9 +68,7 @@ export async function getJobPriority({
       );
     }
   } catch (e) {
-    logger.error(
-      `Get job priority failed: ${team_id}, ${basePriority}`,
-    );
+    logger.error(`Get job priority failed: ${team_id}, ${basePriority}`);
     return basePriority;
   }
 }

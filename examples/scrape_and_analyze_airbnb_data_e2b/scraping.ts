@@ -28,19 +28,18 @@ export async function scrapeAirbnb() {
         .describe('Pagination links in the bottom of the page.'),
     })
 
-    const params2 = {
-      pageOptions: {
-        onlyMainContent: false,
-      },
-      extractorOptions: { extractionSchema: paginationSchema },
-      timeout: 50000, // if needed, sometimes airbnb stalls...
-    }
-
     // Start crawling to get pagination links
-    const linksData = await app.scrapeUrl(listingsUrl, params2)
-    console.log(linksData.data['llm_extraction'])
+    const linksData = await app.scrape(listingsUrl, {
+      onlyMainContent: false,
+      formats: [{
+        type: "json",
+        schema: paginationSchema,
+      }],
+      timeout: 50000, // if needed, sometimes airbnb stalls...
+    });
+    console.log(linksData.json)
 
-    let paginationLinks = linksData.data['llm_extraction'].page_links.map(
+    let paginationLinks = linksData.json!.page_links.map(
       (link) => baseUrl + link.link
     )
 
@@ -64,17 +63,16 @@ export async function scrapeAirbnb() {
         .describe('Airbnb listings in San Francisco'),
     })
 
-    const params = {
-      pageOptions: {
-        onlyMainContent: false,
-      },
-      extractorOptions: { extractionSchema: schema },
-    }
-
     // Function to scrape a single URL
     const scrapeListings = async (url) => {
-      const result = await app.scrapeUrl(url, params)
-      return result.data['llm_extraction'].listings
+      const result = await app.scrape(url, {
+        onlyMainContent: false,
+        formats: [{
+          type: "json",
+          schema: schema,
+        }],
+      });
+      return result.json!.listings
     }
 
     // Scrape all pagination links in parallel

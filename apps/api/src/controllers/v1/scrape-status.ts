@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
+import { supabaseGetScrapeByIdOnlyData } from "../../lib/supabase-jobs";
 import { getJob } from "./crawl-status";
 import { logger as _logger } from "../../lib/logger";
 
@@ -14,10 +14,14 @@ export async function scrapeStatusController(req: any, res: any) {
   });
 
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on scrape status. Please contact support@firecrawl.com to unblock this feature." });
+    return res.status(400).json({
+      success: false,
+      error:
+        "Your team has zero data retention enabled. This is not supported on scrape status. Please contact support@firecrawl.com to unblock this feature.",
+    });
   }
 
-  const job = await supabaseGetJobByIdOnlyData(req.params.jobId, logger);
+  const job = await supabaseGetScrapeByIdOnlyData(req.params.jobId, logger);
 
   if (!job) {
     return res.status(404).json({
@@ -26,9 +30,7 @@ export async function scrapeStatusController(req: any, res: any) {
     });
   }
 
-  if (
-    job?.team_id !== req.auth.team_id
-  ) {
+  if (job?.team_id !== req.auth.team_id) {
     return res.status(403).json({
       success: false,
       error: "You are not allowed to access this resource.",
@@ -39,7 +41,7 @@ export async function scrapeStatusController(req: any, res: any) {
   const data = Array.isArray(jobData?.returnvalue)
     ? jobData?.returnvalue[0]
     : jobData?.returnvalue;
-  
+
   if (!data) {
     return res.status(404).json({
       success: false,

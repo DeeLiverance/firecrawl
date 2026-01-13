@@ -1,4 +1,5 @@
 import request from "supertest";
+import { config } from "../../config";
 import { configDotenv } from "dotenv";
 import { ScrapeRequest } from "../../controllers/v1/types";
 
@@ -12,7 +13,7 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({ url: "https://httpstat.us/403" });
 
@@ -37,7 +38,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -82,7 +83,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -115,7 +116,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -151,7 +152,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -178,7 +179,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -208,7 +209,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -239,7 +240,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -269,7 +270,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -278,7 +279,7 @@ describe("E2E Tests for v1 API Routes", () => {
       if (!("error" in response.body)) {
         throw new Error("Expected response body to have 'error' property");
       }
-      expect(response.body.error).toBe("Request timed out");
+      expect(response.body.error).toContain("Scrape timed out");
       expect(response.body.success).toBe(false);
     },
     30000,
@@ -294,7 +295,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -315,10 +316,10 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({ url: "https://arxiv.org/pdf/astro-ph/9301001.pdf" });
-      await new Promise((r) => setTimeout(r, 6000));
+      await new Promise(r => setTimeout(r, 6000));
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
@@ -335,13 +336,13 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const responseNoParsePDF: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           url: "https://arxiv.org/pdf/astro-ph/9301001.pdf",
           parsePDF: false,
         });
-      await new Promise((r) => setTimeout(r, 6000));
+      await new Promise(r => setTimeout(r, 6000));
 
       expect(responseNoParsePDF.statusCode).toBe(200);
       expect(responseNoParsePDF.body).toHaveProperty("data");
@@ -367,7 +368,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   //     const response: any = await request(FIRECRAWL_API_URL)
   //       .post("/v1/scrape")
-  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
   //       .set("Content-Type", "application/json")
   //       .send(scrapeRequest);
 
@@ -386,7 +387,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
       console.log("Error1a");
@@ -408,7 +409,7 @@ describe("E2E Tests for v1 API Routes", () => {
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequestWithSkipTlsVerification);
 
@@ -436,7 +437,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -466,7 +467,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -497,7 +498,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -538,7 +539,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -586,7 +587,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -622,7 +623,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -655,7 +656,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 
@@ -692,7 +693,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       const response: any = await request(FIRECRAWL_API_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
 

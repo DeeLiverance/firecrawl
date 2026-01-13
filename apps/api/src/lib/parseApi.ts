@@ -13,7 +13,10 @@ export function parseApi(api: string) {
   return uuid;
 }
 
-export function uuidToFcUuid(uuid: string) {
-  const uuidWithoutDashes = uuid.replace(/-/g, "");
+export function apiKeyToFcApiKey(apiKey: string | null | undefined) {
+  if (!apiKey) {
+    return null;
+  }
+  const uuidWithoutDashes = apiKey.replace(/-/g, "");
   return `fc-${uuidWithoutDashes}`;
 }

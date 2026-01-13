@@ -1,16 +1,5 @@
-import type { Document as V1Document, Action } from "../controllers/v1/types";
-
-export interface Progress {
-  current: number;
-  total: number;
-  status: string;
-  metadata?: {
-    sourceURL?: string;
-    [key: string]: any;
-  };
-  currentDocumentUrl?: string;
-  currentDocument?: Document;
-}
+import type { Action } from "../controllers/v1/types";
+import type { BrandingProfile } from "../types/branding";
 
 export type PageOptions = {
   includeMarkdown?: boolean;
@@ -61,38 +50,6 @@ export type SearchOptions = {
   location?: string;
 };
 
-export type CrawlerOptions = {
-  returnOnlyUrls?: boolean;
-  includes?: string | string[];
-  excludes?: string | string[];
-  maxCrawledLinks?: number;
-  maxDepth?: number;
-  limit?: number;
-  generateImgAltText?: boolean;
-  replaceAllPathsWithAbsolutePaths?: boolean;
-  ignoreSitemap?: boolean;
-  mode?: "default" | "fast"; // have a mode of some sort
-  allowBackwardCrawling?: boolean;
-  allowExternalContentLinks?: boolean;
-};
-
-export type WebScraperOptions = {
-  jobId: string;
-  urls: string[];
-  mode: "single_urls" | "sitemap" | "crawl";
-  crawlerOptions?: CrawlerOptions;
-  pageOptions?: PageOptions;
-  extractorOptions?: ExtractorOptions;
-  concurrentRequests?: number;
-  bullJobId?: string;
-  priority?: number;
-  teamId?: string;
-};
-
-export interface DocumentUrl {
-  url: string;
-}
-
 export class Document {
   id?: string;
   url?: string; // Used only in /search for now
@@ -114,7 +71,13 @@ export class Document {
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
+    javascriptReturns?: {
+      type: string;
+      value: unknown;
+    }[];
+    pdfs?: string[];
   };
+  branding?: BrandingProfile;
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
@@ -151,25 +114,56 @@ export class SearchResult {
   }
 }
 
+interface ImageSearchResult {
+  title?: string;
+  imageUrl?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  url?: string;
+  position?: number;
+}
+
+interface NewsSearchResult {
+  title?: string;
+  url?: string;
+  snippet?: string;
+  date?: string;
+  imageUrl?: string;
+  position?: number;
+  category?: string;
+  // Scraped content fields
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  screenshot?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface WebSearchResult {
+  url: string;
+  title: string;
+  description: string;
+  position?: number;
+  category?: string;
+  // Scraped content fields
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  screenshot?: string;
+  metadata?: Record<string, any>;
+}
+
+export type SearchResultType = "web" | "images" | "news";
+
+export interface SearchV2Response {
+  web?: WebSearchResult[];
+  images?: ImageSearchResult[];
+  news?: NewsSearchResult[];
+}
+
 export interface ScrapeActionContent {
   url: string;
   html: string;
-}
-
-export interface FireEngineResponse {
-  html: string;
-  screenshots?: string[];
-  pageStatusCode?: number;
-  pageError?: string;
-  scrapeActionContent?: ScrapeActionContent[];
-}
-
-export interface FireEngineOptions {
-  mobileProxy?: boolean;
-  method?: string;
-  engine?: string;
-  blockMedia?: boolean;
-  blockAds?: boolean;
-  disableJsDom?: boolean;
-  atsv?: boolean; // beta
 }

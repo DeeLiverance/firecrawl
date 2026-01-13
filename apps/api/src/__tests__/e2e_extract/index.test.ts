@@ -1,12 +1,11 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import { config } from "../../config";
 import {
   FirecrawlCrawlResponse,
   FirecrawlCrawlStatusResponse,
   FirecrawlScrapeResponse,
 } from "../../types";
 
-dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for Extract API Routes", () => {
@@ -15,7 +14,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://firecrawl.dev/*"],
@@ -53,7 +52,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["firecrawl.dev/*"],
@@ -91,7 +90,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://firecrawl.dev/*"],
@@ -128,7 +127,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["fivetran.com/*"],
@@ -153,7 +152,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["fivetran.com/*"],
@@ -184,7 +183,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: [
@@ -214,7 +213,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://mintlify.com/docs/*"],
@@ -258,7 +257,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://ericciarla.com/"],
@@ -291,7 +290,7 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://docs.firecrawl.dev"],
@@ -312,10 +311,12 @@ describe("E2E Tests for Extract API Routes", () => {
     async () => {
       const response = await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
-          urls: ["https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/"],
+          urls: [
+            "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/",
+          ],
           prompt: "What is the content right after the #content-1 id?",
           schema: {
             type: "object",
@@ -326,15 +327,51 @@ describe("E2E Tests for Extract API Routes", () => {
           },
           scrapeOptions: {
             waitFor: 6000,
-          }
+          },
         });
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
       expect(typeof response.body.data).toBe("object");
       expect(response.body.data?.content).toBeDefined();
-      expect(response.body.data?.content).toBe("Content loaded after 5 seconds!");
+      expect(response.body.data?.content).toBe(
+        "Content loaded after 5 seconds!",
+      );
     },
     60000,
   );
+
+  describe("UUID validation", () => {
+    it.concurrent(
+      "should reject invalid UUID 'None' for extract status",
+      async () => {
+        const response = await request(TEST_URL)
+          .get("/v2/extract/None")
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
+          .send();
+
+        expect(response.statusCode).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe(
+          "Invalid job ID format. Job ID must be a valid UUID.",
+        );
+      },
+    );
+
+    it.concurrent(
+      "should reject malformed UUID for extract status",
+      async () => {
+        const response = await request(TEST_URL)
+          .get("/v2/extract/not-a-uuid")
+          .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
+          .send();
+
+        expect(response.statusCode).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe(
+          "Invalid job ID format. Job ID must be a valid UUID.",
+        );
+      },
+    );
+  });
 });

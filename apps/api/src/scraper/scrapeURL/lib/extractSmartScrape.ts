@@ -10,7 +10,10 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
-import { CostLimitExceededError, CostTracking } from "../../../lib/extract/extraction-service";
+import {
+  CostLimitExceededError,
+  CostTracking,
+} from "../../../lib/cost-tracking";
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -78,69 +81,6 @@ const multiSmartScrapeWrapperSchemaDefinition = {
   required: ["extractedData", "shouldUseSmartscrape"],
 };
 
-//TODO: go over and check
-// should add null to all types
-// type:string should be type:["string","null"]
-export function makeSchemaNullable(schema: any): any {
-  if (typeof schema !== "object" || schema === null) {
-    return schema; // Base case: not an object/array or is null
-  }
-
-  if (Array.isArray(schema)) {
-    return schema.map(makeSchemaNullable); // Recurse for array items
-  }
-
-  // Process object properties
-  const newSchema: { [key: string]: any } = {};
-  let isObject = false; // Flag to track if this level is an object type
-
-  for (const key in schema) {
-    if (key === "additionalProperties") {
-      continue; // Skip existing additionalProperties, we'll set it later if needed
-    }
-
-    if (key === "type") {
-      const currentType = schema[key];
-      let finalType: string | string[];
-
-      if (typeof currentType === "string") {
-        if (currentType === "object") isObject = true;
-        finalType =
-          currentType === "null" ? currentType : [currentType, "null"];
-      } else if (Array.isArray(currentType)) {
-        if (currentType.includes("object")) isObject = true;
-        finalType = currentType.includes("null")
-          ? currentType
-          : [...currentType, "null"];
-      } else {
-        finalType = currentType; // Handle unexpected types?
-      }
-      newSchema[key] = finalType;
-    } else if (typeof schema[key] === "object" && schema[key] !== null) {
-      // Recurse for nested objects (properties, items, definitions, etc.)
-      newSchema[key] = makeSchemaNullable(schema[key]);
-      if (key === "properties") {
-        // Having a 'properties' key strongly implies an object type
-        isObject = true;
-      }
-    } else {
-      // Copy other properties directly (like required, description, etc.)
-      newSchema[key] = schema[key];
-    }
-  }
-
-  // **Crucial Fix:** If this schema represents an object type, add additionalProperties: false
-  if (isObject) {
-    // Ensure 'properties' exists if 'type' was 'object' but 'properties' wasn't defined
-    if (!newSchema.properties) {
-      newSchema.properties = {};
-    }
-    newSchema.additionalProperties = false;
-  }
-
-  return newSchema;
-}
-
 /**
  * Wraps the original schema with SmartScrape fields if an original schema exists.
  *
@@ -148,7 +88,7 @@ export function makeSchemaNullable(schema: any): any {
  * @param logger Winston logger instance.
  * @returns An object containing the schema to use for the LLM call and whether wrapping occurred.
  */
-export function prepareSmartScrapeSchema(
+function prepareSmartScrapeSchema(
   originalSchema: any | z.ZodTypeAny | undefined,
   logger: Logger,
   isSingleUrl: boolean,
@@ -180,29 +120,117 @@ export function prepareSmartScrapeSchema(
   return { schemaToUse: wrappedSchema };
 }
 
-// Resolve all $defs references in the schema
-const resolveRefs = (obj: any, defs: any): any => {
-  if (!obj || typeof obj !== 'object') return obj;
+const hasRecursiveRefs = (schema: any, defs: any): boolean => {
+  if (!defs || typeof defs !== "object") return false;
 
-  if (obj.$ref && typeof obj.$ref === 'string') {
-    // Handle $ref references
-    const refPath = obj.$ref.split('/');
-    if (refPath[0] === '#' && refPath[1] === '$defs') {
-      const defName = refPath[refPath.length - 1];
-      return resolveRefs({ ...defs[defName] }, defs);
+  for (const [defName, defValue] of Object.entries(defs)) {
+    if (containsRecursiveRef(defValue, defName, defs)) {
+      return true;
     }
+  }
+
+  return false;
+};
+
+const containsRecursiveRef = (
+  obj: any,
+  targetDefName: string,
+  defs: any,
+  visited = new Set(),
+): boolean => {
+  if (!obj || typeof obj !== "object") return false;
+
+  const objKey = JSON.stringify(obj);
+  if (visited.has(objKey)) return false;
+  visited.add(objKey);
+
+  if (obj.$ref && typeof obj.$ref === "string") {
+    const refPath = obj.$ref.split("/");
+    if (refPath[0] === "#" && refPath[1] === "$defs") {
+      const defName = refPath[refPath.length - 1];
+      if (defName === targetDefName) {
+        visited.delete(objKey);
+        return true;
+      }
+      if (defs[defName]) {
+        const isRecursive = containsRecursiveRef(
+          defs[defName],
+          targetDefName,
+          defs,
+          visited,
+        );
+        visited.delete(objKey);
+        return isRecursive;
+      }
+    }
+  }
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (containsRecursiveRef(item, targetDefName, defs, visited)) {
+        visited.delete(objKey);
+        return true;
+      }
+    }
+  } else {
+    for (const value of Object.values(obj)) {
+      if (containsRecursiveRef(value, targetDefName, defs, visited)) {
+        visited.delete(objKey);
+        return true;
+      }
+    }
+  }
+
+  visited.delete(objKey);
+  return false;
+};
+
+// Resolve all $defs references in the schema
+const resolveRefs = (
+  obj: any,
+  defs: any,
+  logger: Logger,
+  visited = new WeakSet(),
+  depth = 0,
+): any => {
+  if (!obj || typeof obj !== "object" || depth > 10) return obj;
+
+  if (visited.has(obj)) {
+    logger.warn(
+      "resolveRefs: Detected circular reference, aborting to prevent infinite recursion",
+    );
+    return obj;
+  }
+  visited.add(obj);
+
+  if (obj.$ref && typeof obj.$ref === "string") {
+    // Handle $ref references
+    const refPath = obj.$ref.split("/");
+    if (refPath[0] === "#" && refPath[1] === "$defs") {
+      const defName = refPath[refPath.length - 1];
+      if (defs[defName]) {
+        return resolveRefs(
+          { ...defs[defName] },
+          defs,
+          logger,
+          visited,
+          depth + 1,
+        );
+      }
+    }
+    return obj; // Return original if ref can't be resolved
   }
 
   // Handle arrays
   if (Array.isArray(obj)) {
-    return obj.map(item => resolveRefs(item, defs));
+    return obj.map(item => resolveRefs(item, defs, logger, visited, depth + 1));
   }
 
   // Handle objects
   const resolved: any = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (key === '$defs') continue;
-    resolved[key] = resolveRefs(value, defs);
+    if (key === "$defs") continue;
+    resolved[key] = resolveRefs(value, defs, logger, visited, depth + 1);
   }
   return resolved;
 };
@@ -214,6 +242,7 @@ export async function extractData({
   extractId,
   sessionId,
   scrapeId,
+  metadata,
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
@@ -221,6 +250,7 @@ export async function extractData({
   extractId?: string;
   sessionId?: string;
   scrapeId?: string;
+  metadata: { teamId: string; functionId?: string };
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
@@ -233,17 +263,76 @@ export async function extractData({
   // TODO: remove the "required" fields here!! it breaks o3-mini
 
   if (!schema && extractOptions.options.prompt) {
-    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger, extractOptions.costTrackingOptions.costTracking);
+    const genRes = await generateSchemaFromPrompt(
+      extractOptions.options.prompt,
+      logger,
+      extractOptions.costTrackingOptions.costTracking,
+      {
+        ...metadata,
+        extractId,
+        scrapeId,
+        functionId: metadata.functionId
+          ? metadata.functionId + "/extractData"
+          : "extractData",
+      },
+    );
     schema = genRes.extract;
   }
 
   if (schema) {
     const defs = schema.$defs || {};
-    schema = resolveRefs(schema, defs);
-    delete schema.$defs;
-    logger.info("Resolved schema refs", {
-      schema,
-    });
+    const schemaString = JSON.stringify(schema);
+    const hasAnyRefs =
+      schema.$defs ||
+      schemaString.includes('"$ref"') ||
+      schemaString.includes("#/$defs/");
+
+    if (hasAnyRefs) {
+      logger.info(
+        "Detected schema with references, attempting to resolve refs",
+        {
+          hasDefsProperty: !!schema.$defs,
+          hasRefInString: schemaString.includes('"$ref"'),
+          hasRefPathInString: schemaString.includes("#/$defs/"),
+        },
+      );
+
+      try {
+        const resolvedSchema = resolveRefs(schema, defs, logger);
+
+        const resolvedString = JSON.stringify(resolvedSchema);
+        const hasRemainingRefs =
+          resolvedString.includes('"$ref"') ||
+          resolvedString.includes("#/$defs/");
+
+        if (!hasRemainingRefs) {
+          schema = resolvedSchema;
+          if (schema && typeof schema === "object" && schema.$defs)
+            delete schema.$defs;
+          logger.info("Successfully resolved schema refs", {
+            schema,
+          });
+        } else {
+          logger.info(
+            "Reference resolution was skipped or incomplete (remaining $ref detected), preserving original schema",
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          "Failed to resolve schema refs, preserving original schema",
+          { error },
+        );
+      }
+    } else {
+      logger.info("No recursive references detected, resolving refs", {
+        schema,
+      });
+      schema = resolveRefs(schema, defs, logger);
+      delete schema.$defs;
+      logger.info("Resolved schema refs", {
+        schema,
+      });
+    }
   }
 
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
@@ -274,7 +363,7 @@ export async function extractData({
         metadata: {
           module: "scrapeURL",
           method: "extractData",
-          description: "Check if using smartScrape is needed for this case"
+          description: "Check if using smartScrape is needed for this case",
         },
       },
     });
@@ -285,11 +374,10 @@ export async function extractData({
     if (error instanceof CostLimitExceededError) {
       throw error;
     }
-    
-    logger.error(
-      "failed during extractSmartScrape.ts:generateCompletions",
-      { error },
-    );
+
+    logger.error("failed during extractSmartScrape.ts:generateCompletions", {
+      error,
+    });
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
 
@@ -305,7 +393,7 @@ export async function extractData({
       url: urls,
       prompt: extract?.smartscrape_prompt,
       providedExtractId: extractId,
-    })
+    });
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults: SmartScrapeResult[];
@@ -324,15 +412,18 @@ export async function extractData({
         const pages = extract?.smartscrapePages ?? [];
         //do it async promiseall instead
         if (pages.length > 100) {
-          logger.warn("Smart scrape pages limit exceeded, only first 100 pages will be scraped", {
-            pagesLength: pages.length,
-            extractId,
-            scrapeId,
-          });
+          logger.warn(
+            "Smart scrape pages limit exceeded, only first 100 pages will be scraped",
+            {
+              pagesLength: pages.length,
+              extractId,
+              scrapeId,
+            },
+          );
         }
 
         smartscrapeResults = await Promise.all(
-          pages.slice(0, 100).map(async (page) => {
+          pages.slice(0, 100).map(async page => {
             return await smartScrape({
               url: urls[page.page_index],
               prompt: page.smartscrape_prompt,
@@ -347,22 +438,29 @@ export async function extractData({
       // console.log("smartscrapeResults", smartscrapeResults);
 
       const scrapedPages = smartscrapeResults.map(
-        (result) => result.scrapedPages,
+        result => result.scrapedPages,
       );
       // console.log("scrapedPages", scrapedPages);
-      const htmls = scrapedPages.flat().map((page) => page.html);
+      const htmls = scrapedPages.flat().map(page => page.html);
       // console.log("htmls", htmls);
+      const requestId = extractId || scrapeId;
       const markdowns = await Promise.all(
-        htmls.map(async (html) => await parseMarkdown(html)),
+        htmls.map(
+          async html =>
+            await parseMarkdown(html, {
+              logger,
+              requestId,
+            }),
+        ),
       );
       // console.log("markdowns", markdowns);
       extractedData = await Promise.all(
-        markdowns.map(async (markdown) => {
+        markdowns.map(async markdown => {
           const newExtractOptions = {
             ...extractOptions,
             markdown: markdown,
-            model: getModel("gemini-2.5-pro", "vertex"),
-            retryModel: getModel("gemini-2.5-pro", "google"),
+            model: getModel("gpt-4o-mini", "openai"),
+            retryModel: getModel("gpt-4.1", "openai"),
             costTrackingOptions: {
               costTracking: extractOptions.costTrackingOptions.costTracking,
               metadata: {
@@ -372,8 +470,7 @@ export async function extractData({
               },
             },
           };
-          const { extract } =
-            await generateCompletions(newExtractOptions);
+          const { extract } = await generateCompletions(newExtractOptions);
           return extract;
         }),
       );
@@ -387,7 +484,8 @@ export async function extractData({
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
     if (error instanceof Error && error.message === "Cost limit exceeded") {
       costLimitExceededTokenUsage = (error as any).cause.tokenUsage;
-      warning = "Smart scrape cost limit exceeded." + (warning ? " " + warning : "")
+      warning =
+        "Smart scrape cost limit exceeded." + (warning ? " " + warning : "");
     } else {
       throw error;
     }

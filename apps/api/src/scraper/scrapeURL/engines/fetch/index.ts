@@ -1,21 +1,18 @@
 import * as undici from "undici";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { TimeoutError } from "../../error";
+import { SSLError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import {
+  getSecureDispatcher,
   InsecureConnectionError,
-  makeSecureDispatcher,
 } from "../utils/safeFetch";
 import { MockState, saveMock } from "../../lib/mock";
 import { TextDecoder } from "util";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 300000;
-
   const mockOptions = {
     url: meta.rewrittenUrl ?? meta.url,
 
@@ -28,7 +25,7 @@ export async function scrapeURLWithFetch(
 
   let response: {
     url: string;
-    body: string,
+    body: string;
     status: number;
     headers: [string, string][];
   };
@@ -40,7 +37,7 @@ export async function scrapeURLWithFetch(
 
     const thisId = makeRequestTypeId(mockOptions);
     const matchingMocks = meta.mock.requests
-      .filter((x) => makeRequestTypeId(x.options) === thisId)
+      .filter(x => makeRequestTypeId(x.options) === thisId)
       .sort((a, b) => a.time - b.time);
     const nextI = meta.mock.tracker[thisId] ?? 0;
     meta.mock.tracker[thisId] = nextI + 1;
@@ -54,33 +51,27 @@ export async function scrapeURLWithFetch(
     };
   } else {
     try {
-      const x = await Promise.race([
-        undici.fetch(meta.rewrittenUrl ?? meta.url, {
-          dispatcher: await makeSecureDispatcher(meta.rewrittenUrl ?? meta.url),
-          redirect: "follow",
-          headers: meta.options.headers,
-          signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-        }),
-        (async () => {
-          await new Promise((resolve) =>
-            setTimeout(() => resolve(null), timeout),
-          );
-          throw new TimeoutError(
-            "Fetch was unable to scrape the page before timing out",
-            { cause: { timeout } },
-          );
-        })(),
-      ]);
+      const x = await undici.fetch(meta.rewrittenUrl ?? meta.url, {
+        dispatcher: getSecureDispatcher(meta.options.skipTlsVerification),
+        redirect: "follow",
+        headers: meta.options.headers,
+        signal: meta.abort.asSignal(),
+      });
 
       const buf = Buffer.from(await x.arrayBuffer());
       let text = buf.toString("utf8");
-      const charset = (text.match(/<meta\b[^>]*charset\s*=\s*["']?([^"'\s\/>]+)/i) ?? [])[1]
+      const charset = (text.match(
+        /<meta\b[^>]*charset\s*=\s*["']?([^"'\s\/>]+)/i,
+      ) ?? [])[1];
       try {
         if (charset) {
           text = new TextDecoder(charset.trim()).decode(buf);
         }
       } catch (error) {
-        meta.logger.warn("Failed to re-parse with correct charset", { charset, error })
+        meta.logger.warn("Failed to re-parse with correct charset", {
+          charset,
+          error,
+        });
       }
 
       response = {
@@ -91,10 +82,7 @@ export async function scrapeURLWithFetch(
       };
 
       if (meta.mock === null) {
-        await saveMock(
-          mockOptions,
-          response,
-        );
+        await saveMock(mockOptions, response);
       }
     } catch (error) {
       if (
@@ -102,6 +90,13 @@ export async function scrapeURLWithFetch(
         error.cause instanceof InsecureConnectionError
       ) {
         throw error.cause;
+      } else if (
+        error instanceof Error &&
+        error.message === "fetch failed" &&
+        error.cause &&
+        (error.cause as any).code === "CERT_HAS_EXPIRED"
+      ) {
+        throw new SSLError(meta.options.skipTlsVerification);
       } else {
         throw error;
       }
@@ -117,10 +112,14 @@ export async function scrapeURLWithFetch(
     url: response.url,
     html: response.body,
     statusCode: response.status,
-    contentType: (response.headers.find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    contentType:
+      (response.headers.find(x => x[0].toLowerCase() === "content-type") ??
+        [])[1] ?? undefined,
 
     proxyUsed: "basic",
   };
+}
+
+export function fetchMaxReasonableTime(meta: Meta): number {
+  return 15000;
 }

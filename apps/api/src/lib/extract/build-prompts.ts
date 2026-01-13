@@ -30,15 +30,6 @@ Website to get content from: ${url}
 Return only a concise sentece or 2 focused on the essential data points that the user wants to extract. This will be used by an LLM to determine how releavant the links that are present are to the user's request.`;
 }
 
-export function buildRerankerSystemPrompt(): string {
-  return `You are a relevance expert scoring links from a website the user is trying to extract information from. Analyze the provided URLs and their content
-to determine their relevance to the user's query and intent. 
-    For each URL, assign a relevance score between 0 and 1, where 1
-     means highly relevant and we should extract the content from it and 0 means not relevant at all, we should not extract the content from it.
-      Always return all the links scored that you are giving. Do not omit links. 
-     Always return the links in the same order they were provided. If the user wants the content from all the links, all links should be scored 1.`;
-}
-
 export function buildRerankerUserPrompt(searchQuery: string): string {
   return `Given these URLs and their content, analyze their relevance to this extraction request: "${searchQuery}".
 
@@ -89,19 +80,6 @@ export function buildAnalyzeSchemaUserPrompt(
 Schema: ${schemaString}\nPrompt: ${prompt}\n URLs: ${urls}`;
 }
 
-// Should Extract
-
-export function buildShouldExtractSystemPrompt(): string {
-  return `You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.`;
-}
-
-export function buildShouldExtractUserPrompt(
-  prompt: string,
-  schema: any,
-): string {
-  return `Should the following content be used to extract information for this prompt: "${prompt}" User schema is: ${JSON.stringify(schema)}\nReturn only true or false.`;
-}
-
 // Batch extract
 export function buildBatchExtractSystemPrompt(
   systemPrompt: string,
@@ -117,7 +95,6 @@ export function buildBatchExtractSystemPrompt(
 export function buildBatchExtractPrompt(prompt: string): string {
   return `Today is: ${new Date().toISOString()}\n${prompt}`;
 }
-
 
 export function buildRephraseToSerpPrompt(prompt: string): string {
   return `Rephrase the following prompt to be suitable for a search engine results page (SERP) query. Make sure the rephrased prompt is concise and focused on retrieving relevant search results:

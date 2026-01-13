@@ -11,3 +11,7 @@ dump.rdb
 .sentryclirc
 
 .env.*
+
+firecrawl.log
+
+test-results/

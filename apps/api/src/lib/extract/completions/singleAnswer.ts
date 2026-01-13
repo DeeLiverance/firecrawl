@@ -7,7 +7,7 @@ import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
-import { CostTracking } from "../extraction-service";
+import { CostTracking } from "../../cost-tracking";
 
 export async function singleAnswerCompletion({
   singleAnswerDocs,
@@ -19,6 +19,7 @@ export async function singleAnswerCompletion({
   extractId,
   sessionId,
   costTracking,
+  metadata,
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
@@ -29,6 +30,12 @@ export async function singleAnswerCompletion({
   extractId: string;
   sessionId: string;
   costTracking: CostTracking;
+  metadata: {
+    teamId: string;
+    functionId?: string;
+    extractId?: string;
+    scrapeId?: string;
+  };
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -42,17 +49,16 @@ export async function singleAnswerCompletion({
       extractId,
     }),
     options: {
-      mode: "llm",
       systemPrompt:
         (systemPrompt ? `${systemPrompt}\n` : "") +
         "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided.",
-        prompt: docsPrompt,
-        schema: rSchema,
+      prompt: docsPrompt,
+      schema: rSchema,
     },
     markdown: `${singleAnswerDocs.map((x, i) => `[START_PAGE (ID: ${i})]` + buildDocument(x)).join("\n")} [END_PAGE]\n`,
     isExtractEndpoint: true,
-    model: getModel("gemini-2.5-pro", "vertex"),
-    retryModel: getModel("gemini-2.5-pro", "google"),
+    model: getModel("gpt-4o-mini", "openai"),
+    retryModel: getModel("gpt-4.1", "openai"),
     costTrackingOptions: {
       costTracking,
       metadata: {
@@ -60,14 +66,28 @@ export async function singleAnswerCompletion({
         method: "singleAnswerCompletion",
       },
     },
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId
+        ? metadata.functionId + "/singleAnswerCompletion"
+        : "singleAnswerCompletion",
+    },
   };
-    
+
   const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
-    urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
+    urls: singleAnswerDocs.map(
+      doc => doc.metadata.url || doc.metadata.sourceURL || "",
+    ),
     useAgent,
     extractId,
     sessionId,
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId
+        ? metadata.functionId + "/singleAnswerCompletion"
+        : "singleAnswerCompletion",
+    },
   });
 
   const completion = {
@@ -79,7 +99,7 @@ export async function singleAnswerCompletion({
       model: "gemini-2.5-pro",
     },
     sources: singleAnswerDocs.map(
-      (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
+      doc => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
   };
 
@@ -105,7 +125,7 @@ export async function singleAnswerCompletion({
     extract: completion.extract,
     tokenUsage: completion.tokenUsage,
     sources: singleAnswerDocs.map(
-      (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
+      doc => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
   };
 }

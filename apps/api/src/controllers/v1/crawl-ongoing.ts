@@ -4,20 +4,22 @@ import {
   RequestWithAuth,
   toNewCrawlerOptions,
 } from "./types";
-import {
-  getCrawl,
-  getCrawlsByTeamId,
-} from "../../lib/crawl-redis";
+import { getCrawl } from "../../lib/crawl-redis";
 import { configDotenv } from "dotenv";
+import { crawlGroup } from "../../services/worker/nuq";
 configDotenv();
 
 export async function ongoingCrawlsController(
   req: RequestWithAuth<{}, undefined, OngoingCrawlsResponse>,
   res: Response<OngoingCrawlsResponse>,
 ) {
-  const ids = await getCrawlsByTeamId(req.auth.team_id);
+  const ids = (await crawlGroup.getOngoingByOwner(req.auth.team_id)).map(
+    x => x.id,
+  );
 
-  const crawls = (await Promise.all(ids.map(async id => ({ ...(await getCrawl(id)), id })))).filter((crawl) => crawl !== null && !crawl.cancelled && crawl.crawlerOptions);
+  const crawls = (
+    await Promise.all(ids.map(async id => ({ ...(await getCrawl(id)), id })))
+  ).filter(crawl => crawl !== null && !crawl.cancelled && crawl.crawlerOptions);
 
   res.status(200).json({
     success: true,

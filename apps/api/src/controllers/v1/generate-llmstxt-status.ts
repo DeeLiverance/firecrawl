@@ -1,7 +1,9 @@
 import { Response } from "express";
 import { RequestWithAuth } from "./types";
-import { getGeneratedLlmsTxt, getGeneratedLlmsTxtExpiry } from "../../lib/generate-llmstxt/generate-llmstxt-redis";
-import { supabaseGetJobsById } from "../../lib/supabase-jobs";
+import {
+  getGeneratedLlmsTxt,
+  getGeneratedLlmsTxtExpiry,
+} from "../../lib/generate-llmstxt/generate-llmstxt-redis";
 
 export async function generateLLMsTextStatusController(
   req: RequestWithAuth<{ jobId: string }, any, any>,
@@ -32,10 +34,12 @@ export async function generateLLMsTextStatusController(
 
   return res.status(200).json({
     success: generation.status === "failed" ? false : true,
-    
+
     data: data,
     status: generation.status,
     error: generation?.error ?? undefined,
-    expiresAt: (await getGeneratedLlmsTxtExpiry(req.params.jobId)).toISOString(),
+    expiresAt: (
+      await getGeneratedLlmsTxtExpiry(req.params.jobId)
+    ).toISOString(),
   });
-} 
+}

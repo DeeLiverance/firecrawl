@@ -1,7 +1,7 @@
 import { InternalOptions } from "..";
 import { ScrapeOptions } from "../../../controllers/v1/types";
 
-export type UrlSpecificParams = {
+type UrlSpecificParams = {
   scrapeOptions: Partial<ScrapeOptions>;
   internalOptions: Partial<InternalOptions>;
 };
