@@ -333,6 +333,8 @@ type EngineScrapeResultWithContext = {
   result: EngineScrapeResult;
 };
 
+const MAX_HTML_SIZE_FOR_MARKDOWN_CHECK = 300 * 1024; // 300KB
+
 async function scrapeURLLoopIter(
   meta: Meta,
   engine: Engine,
@@ -359,12 +361,25 @@ async function scrapeURLLoopIter(
       hasMarkdown || hasChangeTracking || hasJson || hasSummary;
 
     let checkMarkdown: string;
+    const htmlSize = engineResult.html?.length ?? 0;
+    const shouldSkipMarkdownCheck = htmlSize > MAX_HTML_SIZE_FOR_MARKDOWN_CHECK;
+
     if (
       meta.internalOptions.teamId === "sitemap" ||
       meta.internalOptions.teamId === "robots-txt"
     ) {
       checkMarkdown = engineResult.html?.trim() ?? "";
     } else if (!needsMarkdown) {
+      checkMarkdown = engineResult.html?.trim() ?? "";
+    } else if (shouldSkipMarkdownCheck) {
+      // Skip markdown conversion for large HTML to avoid slowdowns
+      meta.logger.debug(
+        "Skipping markdown conversion for quality check due to large HTML size",
+        {
+          htmlSize,
+          threshold: MAX_HTML_SIZE_FOR_MARKDOWN_CHECK,
+        },
+      );
       checkMarkdown = engineResult.html?.trim() ?? "";
     } else {
       const requestId = meta.id || meta.internalOptions.crawlId;
