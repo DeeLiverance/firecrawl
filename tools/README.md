@@ -107,6 +107,24 @@ output/biotunechiropractic.com.au/
 └── biotunechiropractic.html
 ```
 
+## Keeping Local Outputs Safe During Upstream Syncs
+
+Use `tools/sync_firecrawl.py` to merge upstream updates without losing local tooling/output:
+
+```bash
+python tools/sync_firecrawl.py \
+  --remote upstream \
+  --branch main \
+  --protected tools,output
+```
+
+The script:
+
+1. Verifies the working tree is clean.
+2. Archives the protected directories.
+3. Fetches and merges the specified upstream branch.
+4. Restores and stages the protected directories so their contents stay untouched.
+
 ## Notes
 
 - The script automatically checks if the Docker API is running
