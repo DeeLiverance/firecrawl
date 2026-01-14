@@ -21,7 +21,6 @@ import argparse
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 
@@ -60,15 +59,41 @@ def ensure_clean_worktree() -> None:
 
 
 def archive_paths(paths: list[Path]) -> dict[Path, Path]:
-    """Copy protected directories into temp folders and return mapping."""
+    """
+    Copy protected directories into a temporary staging area using robocopy (Windows-safe).
+    Returns a mapping from original path to the staging copy.
+    """
     archives: dict[Path, Path] = {}
+    staging_root = REPO_ROOT / ".git" / "sync_firecrawl_staging"
+    if staging_root.exists():
+        shutil.rmtree(staging_root)
+    staging_root.mkdir(parents=True, exist_ok=True)
+
     for path in paths:
         if not path.exists():
             continue
-        temp_dir = Path(tempfile.mkdtemp(prefix=f"firecrawl-{path.name}-"))
-        snapshot = temp_dir / path.name
-        shutil.copytree(path, snapshot)
-        archives[path] = snapshot
+        dest = staging_root / path.name
+        # Use robocopy for robust copying on Windows (handles long paths, permissions)
+        result = subprocess.run(
+            [
+                "robocopy",
+                str(path),
+                str(dest),
+                "/e",
+                "/copyall",
+                "/r:1",
+                "/w:1",
+                "/np",
+                "/njh",
+                "/njs",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode >= 8:
+            raise CommandError(f"robocopy failed for {path}:\n{result.stdout}\n{result.stderr}")
+        archives[path] = dest
     return archives
 
 
