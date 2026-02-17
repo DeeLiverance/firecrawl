@@ -73,14 +73,16 @@ def archive_paths(paths: list[Path]) -> dict[Path, Path]:
         if not path.exists():
             continue
         dest = staging_root / path.name
-        # Use robocopy for robust copying on Windows (handles long paths, permissions)
+        # Use robocopy for robust copying on Windows (handles long paths).
+        # /COPYALL requires auditing privileges on some systems, so keep
+        # copy scope to data/attributes/timestamps for broader compatibility.
         result = subprocess.run(
             [
                 "robocopy",
                 str(path),
                 str(dest),
                 "/e",
-                "/copyall",
+                "/copy:DAT",
                 "/r:1",
                 "/w:1",
                 "/np",

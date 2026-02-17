@@ -70,6 +70,9 @@ _Pst. Hey, you, join our stargazers :)_
 
 ## Quick Start
 
+To run locally, refer to guide [here](https://github.com/firecrawl/firecrawl/blob/main/CONTRIBUTING.md).
+For this workspace's practical startup flow (upstream sync + Docker Desktop + local tools), see [LOCAL_STARTUP.md](./LOCAL_STARTUP.md).
+
 Sign up at [firecrawl.dev](https://firecrawl.dev) to get your API key and start extracting data in seconds. Try the [playground](https://firecrawl.dev/playground) to test it out.
 
 ### Make Your First API Request
