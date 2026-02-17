@@ -30,7 +30,7 @@ import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { url as urlSchema } from "../v1/types";
 import { ZodError } from "zod";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 import { fromV0ScrapeOptions } from "../v2/types";
 import { isSelfHosted } from "../../lib/deployment";
 import { crawlGroup } from "../../services/worker/nuq";
@@ -156,7 +156,7 @@ export async function crawlController(req: Request, res: Response) {
 
     if (isUrlBlocked(url, auth.chunk?.flags ?? null)) {
       return res.status(403).json({
-        error: BLOCKLISTED_URL_MESSAGE,
+        error: UNSUPPORTED_SITE_MESSAGE,
       });
     }
 

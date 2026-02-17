@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import bodyParser from 'body-parser';
 import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest, Page } from 'playwright';
 import dotenv from 'dotenv';
 import UserAgent from 'user-agents';
@@ -10,7 +9,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3003;
 
-app.use(bodyParser.json());
+app.use(express.json());
 
 const BLOCK_MEDIA = (process.env.BLOCK_MEDIA || 'False').toUpperCase() === 'TRUE';
 const MAX_CONCURRENT_PAGES = Math.max(1, Number.parseInt(process.env.MAX_CONCURRENT_PAGES ?? '10', 10) || 10);

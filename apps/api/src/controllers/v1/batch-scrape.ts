@@ -22,7 +22,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { createWebhookSender, WebhookEvent } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { fromV1ScrapeOptions } from "../v2/types";
 import { checkPermissions } from "../../lib/permissions";
@@ -93,7 +93,7 @@ export async function batchScrapeController(
       if (!res.headersSent) {
         return res.status(403).json({
           success: false,
-          error: BLOCKLISTED_URL_MESSAGE,
+          error: UNSUPPORTED_SITE_MESSAGE,
         });
       }
     }

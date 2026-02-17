@@ -10,6 +10,7 @@ from .types import (
     ScrapeOptions,
     CrawlRequest,
     WebhookConfig,
+    AgentWebhookConfig,
     SearchRequest,
     SearchData,
     SourceOption,
@@ -45,6 +46,7 @@ from .methods.aio import map as async_map # type: ignore[attr-defined]
 from .methods.aio import usage as async_usage # type: ignore[attr-defined]
 from .methods.aio import extract as async_extract  # type: ignore[attr-defined]
 from .methods.aio import agent as async_agent  # type: ignore[attr-defined]
+from .methods.aio import browser as async_browser  # type: ignore[attr-defined]
 
 from .watcher_async import AsyncWatcher
 
@@ -80,6 +82,13 @@ class AsyncFirecrawlClient:
         return await async_search.search(self.async_http_client, request)
 
     async def start_crawl(self, url: str, **kwargs) -> CrawlResponse:
+        sitemap = kwargs.pop("sitemap", None)
+        ignore_sitemap = kwargs.pop("ignore_sitemap", None)
+        if sitemap is None and ignore_sitemap is not None:
+            sitemap = "skip" if ignore_sitemap else "include"
+        if sitemap is not None:
+            kwargs["sitemap"] = sitemap
+
         request = CrawlRequest(url=url, **kwargs)
         return await async_crawl.start_crawl(self.async_http_client, request)
 
@@ -170,6 +179,28 @@ class AsyncFirecrawlClient:
             request_timeout=request_timeout,
         )
 
+    async def get_crawl_status_page(
+        self,
+        next_url: str,
+        *,
+        request_timeout: Optional[float] = None,
+    ) -> CrawlJob:
+        """
+        Fetch a single page of crawl results using a next URL.
+
+        Args:
+            next_url: Opaque next URL from a prior crawl status response
+            request_timeout: Timeout (in seconds) for the HTTP request
+
+        Returns:
+            CrawlJob with the page data and next URL (if any)
+        """
+        return await async_crawl.get_crawl_status_page(
+            self.async_http_client,
+            next_url,
+            request_timeout=request_timeout,
+        )
+
     async def cancel_crawl(self, job_id: str) -> bool:
         return await async_crawl.cancel_crawl(self.async_http_client, job_id)
 
@@ -238,6 +269,18 @@ class AsyncFirecrawlClient:
             self.async_http_client, 
             job_id,
             pagination_config=pagination_config
+        )
+
+    async def get_batch_scrape_status_page(
+        self,
+        next_url: str,
+        *,
+        request_timeout: Optional[float] = None,
+    ):
+        return await async_batch.get_batch_scrape_status_page(
+            self.async_http_client,
+            next_url,
+            request_timeout=request_timeout,
         )
 
     async def cancel_batch_scrape(self, job_id: str) -> bool:
@@ -323,6 +366,8 @@ class AsyncFirecrawlClient:
         timeout: Optional[int] = None,
         max_credits: Optional[int] = None,
         strict_constrain_to_urls: Optional[bool] = None,
+        model: Optional[Literal["spark-1-pro", "spark-1-mini"]] = None,
+        webhook: Optional[Union[str, AgentWebhookConfig]] = None,
     ):
         return await async_agent.agent(
             self.async_http_client,
@@ -334,6 +379,8 @@ class AsyncFirecrawlClient:
             timeout=timeout,
             max_credits=max_credits,
             strict_constrain_to_urls=strict_constrain_to_urls,
+            model=model,
+            webhook=webhook,
         )
 
     async def get_agent_status(self, job_id: str):
@@ -348,6 +395,8 @@ class AsyncFirecrawlClient:
         integration: Optional[str] = None,
         max_credits: Optional[int] = None,
         strict_constrain_to_urls: Optional[bool] = None,
+        model: Optional[Literal["spark-1-pro", "spark-1-mini"]] = None,
+        webhook: Optional[Union[str, AgentWebhookConfig]] = None,
     ):
         return await async_agent.start_agent(
             self.async_http_client,
@@ -357,6 +406,8 @@ class AsyncFirecrawlClient:
             integration=integration,
             max_credits=max_credits,
             strict_constrain_to_urls=strict_constrain_to_urls,
+            model=model,
+            webhook=webhook,
         )
 
     async def cancel_agent(self, job_id: str) -> bool:
@@ -369,6 +420,89 @@ class AsyncFirecrawlClient:
             True if the agent was cancelled
         """
         return await async_agent.cancel_agent(self.async_http_client, job_id)
+
+    # Browser
+    async def browser(
+        self,
+        *,
+        ttl: Optional[int] = None,
+        activity_ttl: Optional[int] = None,
+        stream_web_view: Optional[bool] = None,
+    ):
+        """Create a new browser session.
+
+        Args:
+            ttl: Total time-to-live in seconds (30-3600, default 300)
+            activity_ttl: Inactivity TTL in seconds (10-3600)
+            stream_web_view: Whether to enable webview streaming
+
+        Returns:
+            BrowserCreateResponse with session id and CDP URL
+        """
+        return await async_browser.browser(
+            self.async_http_client,
+            ttl=ttl,
+            activity_ttl=activity_ttl,
+            stream_web_view=stream_web_view,
+        )
+
+    async def browser_execute(
+        self,
+        session_id: str,
+        code: str,
+        *,
+        language: Literal["python", "node", "bash"] = "bash",
+        timeout: Optional[int] = None,
+    ):
+        """Execute code in a browser session.
+
+        Args:
+            session_id: Browser session ID
+            code: Code to execute
+            language: Programming language ("python", "node", or "bash")
+            timeout: Execution timeout in seconds (1-300, default 30)
+
+        Returns:
+            BrowserExecuteResponse with execution result
+        """
+        return await async_browser.browser_execute(
+            self.async_http_client,
+            session_id,
+            code,
+            language=language,
+            timeout=timeout,
+        )
+
+    async def delete_browser(self, session_id: str):
+        """Delete a browser session.
+
+        Args:
+            session_id: Browser session ID
+
+        Returns:
+            BrowserDeleteResponse
+        """
+        return await async_browser.delete_browser(
+            self.async_http_client, session_id
+        )
+
+    async def list_browsers(
+        self,
+        *,
+        status: Optional[Literal["active", "destroyed"]] = None,
+    ):
+        """List browser sessions.
+
+        Args:
+            status: Filter by session status ("active" or "destroyed")
+
+        Returns:
+            BrowserListResponse with list of sessions
+        """
+        return await async_browser.list_browsers(
+            self.async_http_client,
+            status=status,
+        )
 
     # Usage endpoints
     async def get_concurrency(self):
@@ -405,4 +539,3 @@ class AsyncFirecrawlClient:
         timeout: Optional[int] = None,
     ) -> AsyncWatcher:
         return AsyncWatcher(self, job_id, kind=kind, poll_interval=poll_interval, timeout=timeout)
-

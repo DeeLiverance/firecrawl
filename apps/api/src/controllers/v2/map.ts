@@ -90,6 +90,7 @@ export async function mapController(
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
         useIndex: req.body.useIndex,
+        ignoreCache: req.body.ignoreCache,
         location: req.body.location,
         headers: req.body.headers,
         id: mapId,

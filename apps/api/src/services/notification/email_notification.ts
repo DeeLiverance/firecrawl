@@ -162,7 +162,7 @@ async function sendEmailNotification(
         : template.html;
 
     const { error } = await resend.emails.send({
-      from: "Firecrawl <firecrawl@getmendableai.com>",
+      from: "Firecrawl <notifications@notifications.firecrawl.dev>",
       to: [email],
       reply_to: "help@firecrawl.com",
       subject: template.subject,

@@ -1,7 +1,7 @@
 import { logger } from "../logger";
 import { calculateLogoArea } from "./types";
 
-interface LogoCandidate {
+export interface LogoCandidate {
   src: string;
   alt: string;
   isSvg: boolean;
@@ -36,7 +36,6 @@ const CONFIDENCE_THRESHOLDS = {
   GOOD_CONFIDENCE: 0.75,
   MODERATE_CONFIDENCE: 0.6,
   WEAK_CONFIDENCE: 0.4,
-  LLM_THRESHOLD: 0.85,
 } as const;
 
 /**
@@ -179,8 +178,7 @@ function detectRepeatedLogos(candidates: LogoCandidate[]): Set<number> {
 
   candidates.forEach((candidate, index) => {
     const srcKey =
-      candidate.src.split("?")[0].split("/").pop()?.toLowerCase() ||
-      candidate.src;
+      extractFilename(candidate.src)?.toLowerCase() || candidate.src;
     if (!srcGroups.has(srcKey)) {
       srcGroups.set(srcKey, []);
     }
@@ -281,6 +279,9 @@ export function selectLogoWithConfidence(
     if (candidate.isVisible) {
       score += 15;
       reasons.push("visible");
+    } else {
+      score -= 25;
+      reasons.push("invisible (hidden/minimized variant, heavy penalty)");
     }
 
     if (candidate.position.top < 100 && candidate.position.left < 300) {
@@ -373,11 +374,6 @@ export function selectLogoWithConfidence(
       reasons.push("body location without header (penalty)");
     }
 
-    if (!candidate.isVisible) {
-      score -= 10;
-      reasons.push("not visible (penalty)");
-    }
-
     return {
       index,
       score,
@@ -445,13 +441,6 @@ export function selectLogoWithConfidence(
 }
 
 /**
- * Determine if LLM validation is needed based on heuristic confidence
- */
-export function shouldUseLLMForLogoSelection(confidence: number): boolean {
-  return confidence < CONFIDENCE_THRESHOLDS.LLM_THRESHOLD;
-}
-
-/**
  * Get top N candidates for LLM validation (when needed)
  * Returns the highest-scoring candidates to reduce token usage
  */
@@ -484,6 +473,9 @@ export function getTopCandidatesForLLM(
     if (candidate.indicators.classMatch) score += 10;
     if (candidate.indicators.srcMatch) score += 10;
     if (candidate.indicators.altMatch) score += 5;
+
+    // Main document images are often the primary brand logo
+    if (candidate.source === "document.images") score += 15;
 
     return { originalIndex, score, candidate };
   });

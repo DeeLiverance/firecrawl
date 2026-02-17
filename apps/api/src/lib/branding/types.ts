@@ -48,6 +48,8 @@ export interface BrandingLLMInput {
   logoCandidates?: Array<{
     src: string;
     alt: string;
+    ariaLabel?: string;
+    title?: string;
     isSvg: boolean;
     isVisible: boolean;
     location: "header" | "body" | "footer";
@@ -61,8 +63,13 @@ export interface BrandingLLMInput {
     };
     href?: string;
     source: string;
+    logoSvgScore?: number;
   }>;
   brandName?: string;
+  /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM infers brand from this. */
+  pageTitle?: string;
+  /** Final page URL after redirects — prefer over document.url when available. */
+  pageUrl?: string;
   backgroundCandidates?: Array<{
     color: string;
     source: string;
@@ -71,7 +78,20 @@ export interface BrandingLLMInput {
   }>;
   screenshot?: string;
   url: string;
+  /** Optional header/nav HTML chunk for LLM when no logo candidates (fallback context). */
+  headerHtmlChunk?: string;
+  /** Favicon URL when available (from page meta/link). */
+  favicon?: string | null;
+  /** OG image URL when available (meta og:image). */
+  ogImage?: string | null;
+  /** Heuristic's logo pick (index in the filtered candidate list we send). Ask LLM to confirm or override and explain. */
+  heuristicLogoPick?: {
+    selectedIndexInFilteredList: number;
+    confidence: number;
+    reasoning: string;
+  };
   teamId?: string;
+  teamFlags?: { debugBranding?: boolean } | null;
 }
 
 /**
@@ -135,6 +155,8 @@ export interface BrandingScriptReturn {
   logoCandidates?: Array<{
     src: string;
     alt: string;
+    ariaLabel?: string;
+    title?: string;
     isSvg: boolean;
     isVisible: boolean;
     location: "header" | "body" | "footer";
@@ -148,8 +170,13 @@ export interface BrandingScriptReturn {
     };
     href?: string;
     source: string;
+    logoSvgScore?: number;
   }>;
   brandName?: string;
+  /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM can infer brand from this. */
+  pageTitle?: string;
+  /** Final page URL after redirects (from window.location.href in the script). */
+  pageUrl?: string;
   typography: {
     stacks: {
       body: string[];

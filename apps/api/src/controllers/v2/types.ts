@@ -71,7 +71,7 @@ export const URL = z.preprocess(
         return false;
       }
     }, "Invalid URL"),
-  // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+  // .refine((x) => !isUrlBlocked(x as string), UNSUPPORTED_SITE_MESSAGE),
 );
 
 const strictMessage =
@@ -528,8 +528,8 @@ const baseScrapeOptions = z.strictObject({
     .transform(tags => tags.map(transformIframeSelector))
     .optional(),
   onlyMainContent: z.boolean().prefault(true),
-  timeout: z.int().positive().finite().optional(),
-  waitFor: z.int().nonnegative().finite().max(60000).prefault(0),
+  timeout: z.int().positive().min(1000).optional(),
+  waitFor: z.int().nonnegative().max(60000).prefault(0),
   mobile: z.boolean().prefault(false),
   parsers: parsersSchema.optional(),
   actions: actionsSchema.optional(),
@@ -541,7 +541,7 @@ const baseScrapeOptions = z.strictObject({
   fastMode: z.boolean().prefault(false),
   useMock: z.string().optional(),
   blockAds: z.boolean().prefault(true),
-  proxy: z.enum(["basic", "stealth", "auto"]).prefault("auto"),
+  proxy: z.enum(["basic", "stealth", "enhanced", "auto"]).prefault("auto"),
   maxAge: z.int().gte(0).optional(),
   minAge: z.int().gte(0).optional(),
   storeInCache: z.boolean().prefault(true),
@@ -596,7 +596,9 @@ const extractTransformImpl = <T extends ScrapeOptionsBase | undefined>(
   }
 
   if (
-    (obj.proxy === "stealth" || obj.proxy === "auto") &&
+    (obj.proxy === "stealth" ||
+      obj.proxy === "enhanced" ||
+      obj.proxy === "auto") &&
     obj.timeout === 30000
   ) {
     result = { ...result, timeout: 120000 };
@@ -679,12 +681,13 @@ const extractOptions = z
     origin: z.string().optional().prefault("api"),
     integration: integrationSchema.optional().transform(val => val || null),
     urlTrace: z.boolean().prefault(false),
-    timeout: z.int().positive().finite().optional(),
+    timeout: z.int().positive().min(1000).optional(),
     agent: agentOptionsExtract.optional(),
     __experimental_streamSteps: z.boolean().prefault(false),
     __experimental_llmUsage: z.boolean().prefault(false),
     __experimental_showSources: z.boolean().prefault(false),
     showSources: z.boolean().prefault(false),
+    // These two below don't do anything anymore
     __experimental_cacheKey: z.string().optional(),
     __experimental_cacheMode: z
       .enum(["direct", "save", "load"])
@@ -768,6 +771,7 @@ const scrapeRequestSchemaBase = baseScrapeOptions.extend({
       auth: z.string(),
       requestId: z.string(),
       shouldBill: z.boolean(),
+      boostConcurrency: z.boolean().optional(),
     })
     .optional(),
 });
@@ -868,7 +872,7 @@ export const crawlerOptions = z.strictObject({
   allowExternalLinks: z.boolean().prefault(false),
   allowSubdomains: z.boolean().prefault(false),
   ignoreRobotsTxt: z.boolean().prefault(false),
-  sitemap: z.enum(["skip", "include"]).prefault("include"),
+  sitemap: z.enum(["skip", "include", "only"]).prefault("include"),
   deduplicateSimilarURLs: z.boolean().prefault(true),
   ignoreQueryParameters: z.boolean().prefault(false),
   regexOnFullURL: z.boolean().prefault(false),
@@ -942,6 +946,7 @@ const mapRequestSchemaBase = crawlerOptions
     useMock: z.string().optional(),
     filterByPath: z.boolean().prefault(true),
     useIndex: z.boolean().prefault(true),
+    ignoreCache: z.boolean().prefault(false),
     location: locationSchema,
     headers: z.record(z.string(), z.string()).optional(),
   });
@@ -1132,6 +1137,7 @@ export type AgentStatusResponse =
       status: "processing" | "completed" | "failed";
       error?: string;
       data?: any;
+      model?: "spark-1-pro" | "spark-1-mini";
       expiresAt: string;
       creditsUsed?: number;
     };
@@ -1246,10 +1252,10 @@ export type TeamFlags = {
   allowZDR?: boolean;
   zdrCost?: number;
   checkRobotsOnScrape?: boolean;
-  allowTeammateInvites?: boolean;
   crawlTtlHours?: number;
   ipWhitelist?: boolean;
   bypassCreditChecks?: boolean;
+  debugBranding?: boolean;
 } | null;
 
 interface RequestWithMaybeACUC<
@@ -1282,6 +1288,7 @@ export function toV0CrawlerOptions(x: CrawlerOptions) {
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
     ignoreSitemap: x.sitemap === "skip",
+    sitemapOnly: x.sitemap === "only",
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
     regexOnFullURL: x.regexOnFullURL,
@@ -1300,7 +1307,7 @@ export function toV2CrawlerOptions(x: any): CrawlerOptions {
     allowExternalLinks: x.allowExternalContentLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
-    sitemap: x.ignoreSitemap ? "skip" : "include",
+    sitemap: x.sitemapOnly ? "only" : x.ignoreSitemap ? "skip" : "include",
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
     regexOnFullURL: x.regexOnFullURL,
@@ -1325,7 +1332,7 @@ function fromV0CrawlerOptions(
       allowExternalLinks: x.allowExternalContentLinks,
       allowSubdomains: x.allowSubdomains,
       ignoreRobotsTxt: x.ignoreRobotsTxt,
-      sitemap: x.ignoreSitemap ? "skip" : "include",
+      sitemap: x.sitemapOnly ? "only" : x.ignoreSitemap ? "skip" : "include",
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,

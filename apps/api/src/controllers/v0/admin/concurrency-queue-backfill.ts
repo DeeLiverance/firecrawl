@@ -2,7 +2,13 @@ import { logger as _logger } from "../../../lib/logger";
 import { Request, Response } from "express";
 import { getRedisConnection } from "../../../services/queue-service";
 import { scrapeQueue } from "../../../services/worker/nuq";
-import { pushConcurrencyLimitedJob } from "../../../lib/concurrency-limit";
+import {
+  pushConcurrencyLimitedJob,
+  pushConcurrencyLimitActiveJob,
+  getConcurrencyLimitActiveJobs,
+} from "../../../lib/concurrency-limit";
+import { RateLimiterMode } from "../../../types";
+import { getACUCTeam } from "../../auth";
 
 export async function concurrencyQueueBackfillController(
   req: Request,
@@ -61,7 +67,35 @@ export async function concurrencyQueueBackfillController(
       logger,
     );
 
+    // Get concurrency limits for both job types
+    const maxCrawlConcurrency =
+      (await getACUCTeam(ownerId, false, true, RateLimiterMode.Crawl))
+        ?.concurrency ?? 2;
+    const maxExtractConcurrency =
+      (await getACUCTeam(ownerId, false, true, RateLimiterMode.Extract))
+        ?.concurrency ?? 2;
+
+    const currentActiveConcurrency = (
+      await getConcurrencyLimitActiveJobs(ownerId)
+    ).length;
+
+    const jobsToStart: typeof jobsToAdd = [];
+    const jobsToQueue: typeof jobsToAdd = [];
+
+    let activeCount = currentActiveConcurrency;
     for (const job of jobsToAdd) {
+      const isExtract = "is_extract" in job.data && job.data.is_extract;
+      const limit = isExtract ? maxExtractConcurrency : maxCrawlConcurrency;
+
+      if (activeCount < limit) {
+        jobsToStart.push(job);
+        activeCount++;
+      } else {
+        jobsToQueue.push(job);
+      }
+    }
+
+    for (const job of jobsToQueue) {
       await pushConcurrencyLimitedJob(
         ownerId,
         {
@@ -73,6 +107,22 @@ export async function concurrencyQueueBackfillController(
         Infinity,
       );
     }
+
+    for (const job of jobsToStart) {
+      await scrapeQueue.promoteJobFromBacklogOrAdd(job.id, job.data, {
+        priority: job.priority,
+        listenable: job.listenChannelId !== undefined,
+        ownerId: job.data.team_id ?? undefined,
+        groupId: job.data.crawl_id ?? undefined,
+      });
+
+      await pushConcurrencyLimitActiveJob(ownerId, job.id, 60 * 1000);
+    }
+
+    logger.info("Started jobs for team", {
+      teamId: ownerId,
+      startedCount: jobsToStart.length,
+    });
 
     logger.info("Finished backfilling concurrency queue for team", {
       teamId: ownerId,

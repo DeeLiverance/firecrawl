@@ -465,6 +465,12 @@ const engineOptions: {
 };
 
 export function shouldUseIndex(meta: Meta) {
+  // Skip index if screenshot format has custom viewport or quality settings
+  const screenshotFormat = hasFormatOfType(meta.options.formats, "screenshot");
+  const hasCustomScreenshotSettings =
+    screenshotFormat?.viewport !== undefined ||
+    screenshotFormat?.quality !== undefined;
+
   return (
     useIndex &&
     config.FIRECRAWL_INDEX_WRITE_ONLY !== true &&
@@ -472,6 +478,7 @@ export function shouldUseIndex(meta: Meta) {
     !hasFormatOfType(meta.options.formats, "branding") &&
     // Skip index if a non-default PDF maxPages is specified
     getPDFMaxPages(meta.options.parsers) === undefined &&
+    !hasCustomScreenshotSettings &&
     meta.options.maxAge !== 0 &&
     (meta.options.headers === undefined ||
       Object.keys(meta.options.headers).length === 0) &&
@@ -602,9 +609,16 @@ export async function buildFallbackList(meta: Meta): Promise<
       f => !f.unsupportedFeatures.has("branding"),
     );
     if (!hasCDPEngine) {
-      throw new Error(
-        "Branding extraction requires Chrome CDP (fire-engine). ",
-      );
+      if (meta.featureFlags.has("pdf")) {
+        throw new Error(
+          "Branding extraction is only supported for HTML web pages. PDFs are not supported.",
+        );
+      } else if (meta.featureFlags.has("document")) {
+        throw new Error(
+          "Branding extraction is only supported for HTML web pages. Documents (docx, xlsx, etc.) are not supported.",
+        );
+      }
+      throw new Error("Branding extraction requires Chrome CDP (fire-engine).");
     }
   }
 

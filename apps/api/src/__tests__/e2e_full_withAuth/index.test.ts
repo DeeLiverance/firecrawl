@@ -1,7 +1,7 @@
 import request from "supertest";
 import { config } from "../../config";
 import { v7 as uuidv7 } from "uuid";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 
 // const TEST_URL = 'http://localhost:3002'
 const TEST_URL = "http://127.0.0.1:3002";
@@ -44,15 +44,15 @@ describe("E2E Tests for API Routes", () => {
       },
     );
 
-    it.concurrent("should return an error for a blocklisted URL", async () => {
-      const blocklistedUrl = "https://facebook.com/fake-test";
+    it.concurrent("should return an error for a unsupported URL", async () => {
+      const unsupportedUrl = "https://facebook.com/fake-test";
       const response = await request(TEST_URL)
         .post("/v0/scrape")
         .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
+        .send({ url: unsupportedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
+      expect(response.body.error).toContain(UNSUPPORTED_SITE_MESSAGE);
     });
 
     it.concurrent(
@@ -454,15 +454,15 @@ describe("E2E Tests for API Routes", () => {
       },
     );
 
-    it.concurrent("should return an error for a blocklisted URL", async () => {
-      const blocklistedUrl = "https://twitter.com/fake-test";
+    it.concurrent("should return an error for a unsupported URL", async () => {
+      const unsupportedUrl = "https://twitter.com/fake-test";
       const response = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
+        .send({ url: unsupportedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
+      expect(response.body.error).toContain(UNSUPPORTED_SITE_MESSAGE);
     });
 
     it.concurrent(
@@ -1045,13 +1045,13 @@ describe("E2E Tests for API Routes", () => {
       },
     );
 
-    // it.concurrent("should return an error for a blocklisted URL", async () => {
-    //   const blocklistedUrl = "https://instagram.com/fake-test";
+    // it.concurrent("should return an error for a unsupported URL", async () => {
+    //   const unsupportedUrl = "https://instagram.com/fake-test";
     //   const response = await request(TEST_URL)
     //     .post("/v0/crawlWebsitePreview")
     //     .set("Authorization", `Bearer ${config.TEST_API_KEY}`)
     //     .set("Content-Type", "application/json")
-    //     .send({ url: blocklistedUrl });
+    //     .send({ url: unsupportedUrl });
     // // is returning 429 instead of 403
     //   expect(response.statusCode).toBe(403);
     //   expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");

@@ -20,6 +20,12 @@ import {
 } from "./methods/batch";
 import { startExtract, getExtractStatus, extract as extractWaiter } from "./methods/extract";
 import { startAgent, getAgentStatus, cancelAgent, agent as agentWaiter } from "./methods/agent";
+import {
+  browser as browserMethod,
+  browserExecute,
+  deleteBrowser,
+  listBrowsers,
+} from "./methods/browser";
 import { getConcurrency, getCreditUsage, getQueueStatus, getTokenUsage, getCreditUsageHistorical, getTokenUsageHistorical } from "./methods/usage";
 import type {
   Document,
@@ -40,6 +46,10 @@ import type {
   CrawlOptions,
   BatchScrapeOptions,
   PaginationConfig,
+  BrowserCreateResponse,
+  BrowserExecuteResponse,
+  BrowserDeleteResponse,
+  BrowserListResponse,
 } from "./types";
 import { Watcher } from "./watcher";
 import type { WatcherOptions } from "./watcher";
@@ -296,6 +306,47 @@ export class FirecrawlClient {
    */
   async cancelAgent(jobId: string): Promise<boolean> {
     return cancelAgent(this.http, jobId);
+  }
+
+  // Browser
+  /**
+   * Create a new browser session.
+   * @param args Session options (ttl, activityTtl, streamWebView).
+   * @returns Session id, CDP URL, live view URL, and expiration time.
+   */
+  async browser(
+    args: Parameters<typeof browserMethod>[1] = {}
+  ): Promise<BrowserCreateResponse> {
+    return browserMethod(this.http, args);
+  }
+  /**
+   * Execute code in a browser session.
+   * @param sessionId Browser session id.
+   * @param args Code, language ("python" | "node" | "bash"), and optional timeout.
+   * @returns Execution result including stdout, stderr, exitCode, and killed status.
+   */
+  async browserExecute(
+    sessionId: string,
+    args: Parameters<typeof browserExecute>[2]
+  ): Promise<BrowserExecuteResponse> {
+    return browserExecute(this.http, sessionId, args);
+  }
+  /**
+   * Delete a browser session.
+   * @param sessionId Browser session id.
+   */
+  async deleteBrowser(sessionId: string): Promise<BrowserDeleteResponse> {
+    return deleteBrowser(this.http, sessionId);
+  }
+  /**
+   * List browser sessions.
+   * @param args Optional filter (status: "active" | "destroyed").
+   * @returns List of browser sessions.
+   */
+  async listBrowsers(
+    args: Parameters<typeof listBrowsers>[1] = {}
+  ): Promise<BrowserListResponse> {
+    return listBrowsers(this.http, args);
   }
 
   // Usage

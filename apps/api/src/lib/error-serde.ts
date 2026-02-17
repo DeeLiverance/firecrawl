@@ -1,4 +1,5 @@
 import {
+  ActionsNotSupportedError,
   CrawlDenialError,
   ErrorCodes,
   MapTimeoutError,
@@ -23,6 +24,8 @@ import {
   SSLError,
   ProxySelectionError,
   NoCachedDataError,
+  ScrapeJobCancelledError,
+  ScrapeRetryLimitError,
 } from "../scraper/scrapeURL/error";
 
 // TODO: figure out correct typing for this
@@ -36,6 +39,8 @@ const errorMap: Record<ErrorCodes, any> = {
   SCRAPE_PROXY_SELECTION_ERROR: ProxySelectionError,
   SCRAPE_PDF_PREFETCH_FAILED: PDFPrefetchFailed,
   SCRAPE_DOCUMENT_PREFETCH_FAILED: DocumentPrefetchFailed,
+  SCRAPE_JOB_CANCELLED: ScrapeJobCancelledError,
+  SCRAPE_RETRY_LIMIT: ScrapeRetryLimitError,
   SCRAPE_ZDR_VIOLATION_ERROR: ZDRViolationError,
   SCRAPE_DNS_RESOLUTION_ERROR: DNSResolutionError,
   SCRAPE_PDF_INSUFFICIENT_TIME_ERROR: PDFInsufficientTimeError,
@@ -44,6 +49,7 @@ const errorMap: Record<ErrorCodes, any> = {
   SCRAPE_UNSUPPORTED_FILE_ERROR: UnsupportedFileError,
   SCRAPE_NO_CACHED_DATA: NoCachedDataError,
   SCRAPE_ACTION_ERROR: ActionError,
+  SCRAPE_ACTIONS_NOT_SUPPORTED: ActionsNotSupportedError,
   SCRAPE_RACED_REDIRECT_ERROR: RacedRedirectError,
   SCRAPE_SITEMAP_ERROR: SitemapError,
   CRAWL_DENIAL: CrawlDenialError,

@@ -19,7 +19,7 @@ import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 import { fromV0Combo } from "../v2/types";
 import { ScrapeJobTimeoutError } from "../../lib/error";
 import { scrapeQueue } from "../../services/worker/nuq";
@@ -64,7 +64,7 @@ async function scrapeHelper(
   if (isUrlBlocked(url, flags)) {
     return {
       success: false,
-      error: BLOCKLISTED_URL_MESSAGE,
+      error: UNSUPPORTED_SITE_MESSAGE,
       returnCode: 403,
     };
   }

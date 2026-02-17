@@ -74,7 +74,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL"),
-  // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+  // .refine((x) => !isUrlBlocked(x as string), UNSUPPORTED_SITE_MESSAGE),
 );
 
 const agentExtractModelValue = "fire-1";
@@ -368,6 +368,12 @@ const actionSchema = z.union([
 
 export type Action = z.infer<typeof actionSchema>;
 
+export type InternalAction = Action & {
+  metadata?: {
+    [key: string]: unknown;
+  };
+};
+
 const actionsSchema = z
   .array(actionSchema)
   .refine(actions => actions.length <= MAX_ACTIONS, {
@@ -447,7 +453,7 @@ const baseScrapeOptions = z.strictObject({
     .transform(tags => tags.map(transformIframeSelector))
     .optional(),
   onlyMainContent: z.boolean().prefault(true),
-  timeout: z.int().positive().finite().optional(),
+  timeout: z.int().positive().min(1000).optional(),
   waitFor: z.int().nonnegative().finite().max(60000).prefault(0),
   // Deprecate this to jsonOptions
   extract: extractOptions.optional(),
@@ -509,7 +515,7 @@ const baseScrapeOptions = z.strictObject({
   fastMode: z.boolean().prefault(false),
   useMock: z.string().optional(),
   blockAds: z.boolean().prefault(true),
-  proxy: z.enum(["basic", "stealth", "auto"]).prefault("basic"),
+  proxy: z.enum(["basic", "stealth", "enhanced", "auto"]).prefault("basic"),
   maxAge: z
     .int()
     .gte(0)
@@ -569,7 +575,9 @@ const extractTransform = (obj: ScrapeOptions) => {
   }
 
   if (
-    (obj.proxy === "stealth" || obj.proxy === "auto") &&
+    (obj.proxy === "stealth" ||
+      obj.proxy === "enhanced" ||
+      obj.proxy === "auto") &&
     obj.timeout === 30000
   ) {
     obj = { ...obj, timeout: 120000 };
@@ -713,11 +721,12 @@ const extractV1Options = z
     origin: z.string().optional().prefault("api"),
     integration: integrationSchema.optional().transform(val => val || null),
     urlTrace: z.boolean().prefault(false),
-    timeout: z.int().positive().finite().prefault(60000),
+    timeout: z.int().positive().min(1000).prefault(60000),
     __experimental_streamSteps: z.boolean().prefault(false),
     __experimental_llmUsage: z.boolean().prefault(false),
     __experimental_showSources: z.boolean().prefault(false),
     showSources: z.boolean().prefault(false),
+    // These two below don't do anything anymore
     __experimental_cacheKey: z.string().optional(),
     __experimental_cacheMode: z
       .enum(["direct", "save", "load"])
@@ -774,7 +783,7 @@ const scrapeRequestSchemaBase = baseScrapeOptions
     jsonOptions: extractOptionsWithAgent.optional(),
     origin: z.string().optional().prefault("api"),
     integration: integrationSchema.optional().transform(val => val || null),
-    timeout: z.int().positive().finite().prefault(30000),
+    timeout: z.int().positive().min(1000).prefault(30000),
     zeroDataRetention: z.boolean().optional(),
   })
   .strict();
@@ -945,6 +954,7 @@ const mapRequestSchemaBase = crawlerOptions
     useMock: z.string().optional(),
     filterByPath: z.boolean().prefault(true),
     useIndex: z.boolean().prefault(true),
+    ignoreCache: z.boolean().prefault(false),
     location: locationSchema,
     headers: z.record(z.string(), z.string()).optional(),
   });
@@ -1236,6 +1246,8 @@ export type AuthCreditUsageChunk = {
     extractStatus: number;
     extractAgentPreview?: number;
     scrapeAgentPreview?: number;
+    browser?: number;
+    browserExecute?: number;
   };
   concurrency: number;
   flags: TeamFlags;
@@ -1251,13 +1263,12 @@ export type TeamFlags = {
   allowZDR?: boolean;
   zdrCost?: number;
   checkRobotsOnScrape?: boolean;
-  allowTeammateInvites?: boolean;
   crawlTtlHours?: number;
   ipWhitelist?: boolean;
   skipCountryCheck?: boolean;
-  extractV3Beta?: boolean;
-  agentBeta?: boolean;
+  browserBeta?: boolean;
   bypassCreditChecks?: boolean;
+  debugBranding?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<

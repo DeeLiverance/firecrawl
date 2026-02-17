@@ -12,8 +12,11 @@ function getDocumentTypeFromUrl(url: string): DocumentType {
   const urlLower = url.toLowerCase();
 
   // Check for extensions at the end or in the middle (e.g., file.xlsx/hash)
+  // Check .docx before .doc to avoid false matches
   if (urlLower.endsWith(".docx") || urlLower.includes(".docx/"))
     return DocumentType.Docx;
+  if (urlLower.endsWith(".doc") || urlLower.includes(".doc/"))
+    return DocumentType.Doc;
   if (urlLower.endsWith(".odt") || urlLower.includes(".odt/"))
     return DocumentType.Odt;
   if (urlLower.endsWith(".rtf") || urlLower.includes(".rtf/"))
@@ -36,13 +39,18 @@ function getDocumentTypeFromContentType(
 
   const ct = contentType.toLowerCase();
 
+  // Check for modern .docx format first (Office Open XML)
   if (
     ct.includes(
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ) ||
-    ct.includes("application/msword")
+    )
   ) {
     return DocumentType.Docx;
+  }
+
+  // Legacy .doc format (OLE2/CFB binary format)
+  if (ct.includes("application/msword")) {
+    return DocumentType.Doc;
   }
 
   if (ct.includes("application/vnd.oasis.opendocument.text")) {

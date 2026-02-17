@@ -141,9 +141,9 @@ async function _autoChargeScale(
           const { data: rechargesThisMonth, error: rechargesThisMonthError } =
             await supabase_service
               .from("subscriptions")
-              .select("*")
+              .select("*, prices!inner(*)")
               .eq("team_id", chunk.team_id)
-              .eq("metadata->>auto_recharge", "true")
+              .eq("prices.metadata->>auto_recharge", "true")
               .gte("current_period_start", currentMonth.toISOString());
 
           if (rechargesThisMonthError || !rechargesThisMonth) {

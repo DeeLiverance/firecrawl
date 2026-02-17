@@ -27,6 +27,7 @@ texting_robots = "0.2.2"
 url = "2.5.7"
 zip = "5.0.0"
 calamine = "0.26"
+cfb = "0.10"
 tokio = "1.48.0"
 
 [build-dependencies]

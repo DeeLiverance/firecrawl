@@ -43,7 +43,10 @@ export function rewriteUrl(url: string): string | undefined {
     }
     const id = url.match(/\/spreadsheets\/d\/([-\w]+)/)?.[1];
     if (id) {
-      return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:html`;
+      // Extract gid parameter from query string or hash fragment to preserve the selected tab
+      const gidMatch = url.match(/[?&#]gid=(\d+)/);
+      const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : "";
+      return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:html${gidParam}`;
     }
   }
 

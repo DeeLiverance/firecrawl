@@ -8,7 +8,7 @@ import {
 } from "./types";
 import { addExtractJobToQueue } from "../../services/queue-service";
 import { saveExtract } from "../../lib/extract/extract-redis";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger as _logger } from "../../lib/logger";
 import { logRequest } from "../../services/logging/log_job";
@@ -51,7 +51,8 @@ export async function extractController(
   if (req.body.agent?.model === "v3-beta") {
     return res.status(400).json({
       success: false,
-      error: "Use the new /agent endpoint instead of passing agent.model=v3-beta into /extract.",
+      error:
+        "Use the new /agent endpoint instead of passing agent.model=v3-beta into /extract.",
     });
   }
 
@@ -64,7 +65,7 @@ export async function extractController(
     if (!res.headersSent) {
       return res.status(403).json({
         success: false,
-        error: BLOCKLISTED_URL_MESSAGE,
+        error: UNSUPPORTED_SITE_MESSAGE,
       });
     }
   }
@@ -113,8 +114,8 @@ export async function extractController(
     urlTrace: [],
     ...(invalidURLs.length > 0 && req.body.ignoreInvalidURLs
       ? {
-        invalidURLs,
-      }
+          invalidURLs,
+        }
       : {}),
   });
 }

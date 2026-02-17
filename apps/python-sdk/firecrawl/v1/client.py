@@ -150,7 +150,7 @@ class V1ScrapeOptions(pydantic.BaseModel):
     skipTlsVerification: Optional[bool] = None
     removeBase64Images: Optional[bool] = None
     blockAds: Optional[bool] = None
-    proxy: Optional[Literal["basic", "stealth", "auto"]] = None
+    proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None
     changeTrackingOptions: Optional[V1ChangeTrackingOptions] = None
     maxAge: Optional[int] = None
     storeInCache: Optional[bool] = None
@@ -542,7 +542,7 @@ class V1FirecrawlApp:
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
-            proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+            proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
             parse_pdf: Optional[bool] = None,
             extract: Optional[V1JsonConfig] = None,
             json_options: Optional[V1JsonConfig] = None,
@@ -1441,7 +1441,7 @@ class V1FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
         extract: Optional[V1JsonConfig] = None,
         json_options: Optional[V1JsonConfig] = None,
         actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
@@ -1582,7 +1582,7 @@ class V1FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
         extract: Optional[V1JsonConfig] = None,
         json_options: Optional[V1JsonConfig] = None,
         actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
@@ -1722,7 +1722,7 @@ class V1FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
         extract: Optional[V1JsonConfig] = None,
         json_options: Optional[V1JsonConfig] = None,
         actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
@@ -3523,7 +3523,7 @@ class AsyncV1FirecrawlApp(V1FirecrawlApp):
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
-            proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+            proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
             parse_pdf: Optional[bool] = None,
             extract: Optional[V1JsonConfig] = None,
             json_options: Optional[V1JsonConfig] = None,
@@ -3657,7 +3657,7 @@ class AsyncV1FirecrawlApp(V1FirecrawlApp):
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
         extract: Optional[V1JsonConfig] = None,
         json_options: Optional[V1JsonConfig] = None,
         actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
@@ -3796,7 +3796,7 @@ class AsyncV1FirecrawlApp(V1FirecrawlApp):
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None,
         extract: Optional[V1JsonConfig] = None,
         json_options: Optional[V1JsonConfig] = None,
         actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,

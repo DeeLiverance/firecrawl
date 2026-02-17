@@ -320,6 +320,23 @@ class WebhookConfig(BaseModel):
     events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
 
 
+class AgentWebhookConfig(BaseModel):
+    """Configuration for agent webhooks.
+
+    Agent webhooks support different events than crawl webhooks:
+    - started: When the agent job starts
+    - action: When the agent takes an action/step
+    - completed: When the job completes successfully
+    - failed: When the job fails
+    - cancelled: When the job is cancelled
+    """
+
+    url: str
+    headers: Optional[Dict[str, str]] = None
+    metadata: Optional[Dict[str, str]] = None
+    events: Optional[List[Literal["started", "action", "completed", "failed", "cancelled"]]] = None
+
+
 class WebhookData(BaseModel):
     """Data sent to webhooks."""
 
@@ -506,7 +523,7 @@ class ScrapeOptions(BaseModel):
     fast_mode: Optional[bool] = None
     use_mock: Optional[str] = None
     block_ads: Optional[bool] = None
-    proxy: Optional[Literal["basic", "stealth", "auto"]] = None
+    proxy: Optional[Literal["basic", "stealth", "enhanced", "auto"]] = None
     max_age: Optional[int] = None
     min_age: Optional[int] = None
     store_in_cache: Optional[bool] = None
@@ -555,7 +572,7 @@ class CrawlRequest(BaseModel):
     exclude_paths: Optional[List[str]] = None
     include_paths: Optional[List[str]] = None
     max_discovery_depth: Optional[int] = None
-    sitemap: Literal["skip", "include"] = "include"
+    sitemap: Literal["skip", "include", "only"] = "include"
     ignore_query_parameters: bool = False
     limit: Optional[int] = None
     crawl_entire_domain: bool = False
@@ -565,6 +582,7 @@ class CrawlRequest(BaseModel):
     max_concurrency: Optional[int] = None
     webhook: Optional[Union[str, WebhookConfig]] = None
     scrape_options: Optional[ScrapeOptions] = None
+    regex_on_full_url: bool = False
     zero_data_retention: bool = False
     integration: Optional[str] = None
 
@@ -647,7 +665,7 @@ class CrawlParamsData(BaseModel):
     include_paths: Optional[List[str]] = None
     exclude_paths: Optional[List[str]] = None
     max_discovery_depth: Optional[int] = None
-    ignore_sitemap: bool = False
+    sitemap: Optional[Literal["skip", "include", "only"]] = None
     ignore_query_parameters: bool = False
     limit: Optional[int] = None
     crawl_entire_domain: bool = False
@@ -787,8 +805,63 @@ class AgentResponse(BaseModel):
     status: Optional[Literal["processing", "completed", "failed"]] = None
     data: Optional[Any] = None
     error: Optional[str] = None
+    model: Optional[Literal["spark-1-pro", "spark-1-mini"]] = None
     expires_at: Optional[datetime] = None
     credits_used: Optional[int] = None
+
+
+# Browser types
+class BrowserCreateResponse(BaseModel):
+    """Response from creating a browser session."""
+
+    success: bool
+    id: Optional[str] = None
+    cdp_url: Optional[str] = None
+    live_view_url: Optional[str] = None
+    expires_at: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BrowserExecuteResponse(BaseModel):
+    """Response from executing code in a browser session."""
+
+    success: bool
+    stdout: Optional[str] = None
+    result: Optional[str] = None
+    stderr: Optional[str] = None
+    exit_code: Optional[int] = None
+    killed: Optional[bool] = None
+    error: Optional[str] = None
+
+
+class BrowserDeleteResponse(BaseModel):
+    """Response from deleting a browser session."""
+
+    success: bool
+    session_duration_ms: Optional[int] = None
+    credits_billed: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BrowserSession(BaseModel):
+    """Information about a browser session."""
+
+    id: str
+    status: str
+    cdp_url: str
+    live_view_url: str
+    stream_web_view: bool
+    created_at: str
+    last_activity: str
+
+
+class BrowserListResponse(BaseModel):
+    """Response from listing browser sessions."""
+
+    success: bool
+    sessions: Optional[List["BrowserSession"]] = None
+    error: Optional[str] = None
+
 
 # Usage/limits types
 class ConcurrencyCheck(BaseModel):

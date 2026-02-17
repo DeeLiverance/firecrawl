@@ -43,7 +43,7 @@ def _prepare_crawl_request(request: CrawlRequest) -> dict:
         "include_paths": "includePaths",
         "exclude_paths": "excludePaths",
         "max_discovery_depth": "maxDiscoveryDepth",
-        "ignore_sitemap": "ignoreSitemap",
+        "sitemap": "sitemap",
         "ignore_query_parameters": "ignoreQueryParameters",
         "crawl_entire_domain": "crawlEntireDomain",
         "allow_external_links": "allowExternalLinks",
@@ -59,6 +59,30 @@ def _prepare_crawl_request(request: CrawlRequest) -> dict:
     if getattr(request, "integration", None) is not None:
         data["integration"] = str(getattr(request, "integration")).strip()
     return data
+
+
+def _parse_crawl_documents(data_list: Optional[List[Any]]) -> List[Document]:
+    documents: List[Document] = []
+    for doc_data in data_list or []:
+        if isinstance(doc_data, dict):
+            normalized = normalize_document_input(doc_data)
+            documents.append(Document(**normalized))
+    return documents
+
+
+def _parse_crawl_status_response(body: Dict[str, Any]) -> Dict[str, Any]:
+    if not body.get("success"):
+        raise Exception(body.get("error", "Unknown error occurred"))
+
+    return {
+        "status": body.get("status"),
+        "completed": body.get("completed", 0),
+        "total": body.get("total", 0),
+        "credits_used": body.get("creditsUsed", 0),
+        "expires_at": body.get("expiresAt"),
+        "next": body.get("next"),
+        "data": _parse_crawl_documents(body.get("data", [])),
+    }
 
 
 async def start_crawl(client: AsyncHttpClient, request: CrawlRequest) -> CrawlResponse:
@@ -114,34 +138,66 @@ async def get_crawl_status(
     if response.status_code >= 400:
         handle_response_error(response, "get crawl status")
     body = response.json()
-    if body.get("success"):
-        documents = []
-        for doc_data in body.get("data", []):
-            if isinstance(doc_data, dict):
-                normalized = normalize_document_input(doc_data)
-                documents.append(Document(**normalized))
-        
-        # Handle pagination if requested
-        auto_paginate = pagination_config.auto_paginate if pagination_config else True
-        if auto_paginate and body.get("next"):
-            documents = await _fetch_all_pages_async(
-                client,
-                body.get("next"),
-                documents,
-                pagination_config,
-                request_timeout=request_timeout,
-            )
-        
-        return CrawlJob(
-            status=body.get("status"),
-            completed=body.get("completed", 0),
-            total=body.get("total", 0),
-            credits_used=body.get("creditsUsed", 0),
-            expires_at=body.get("expiresAt"),
-            next=body.get("next") if not auto_paginate else None,
-            data=documents,
+    payload = _parse_crawl_status_response(body)
+
+    documents = payload["data"]
+
+    # Handle pagination if requested
+    auto_paginate = pagination_config.auto_paginate if pagination_config else True
+    if auto_paginate and payload["next"]:
+        documents = await _fetch_all_pages_async(
+            client,
+            payload["next"],
+            documents,
+            pagination_config,
+            request_timeout=request_timeout,
         )
-    raise Exception(body.get("error", "Unknown error occurred"))
+
+    return CrawlJob(
+        status=payload["status"],
+        completed=payload["completed"],
+        total=payload["total"],
+        credits_used=payload["credits_used"],
+        expires_at=payload["expires_at"],
+        next=payload["next"] if not auto_paginate else None,
+        data=documents,
+    )
+
+
+async def get_crawl_status_page(
+    client: AsyncHttpClient,
+    next_url: str,
+    *,
+    request_timeout: Optional[float] = None,
+) -> CrawlJob:
+    """
+    Fetch a single page of crawl results using the provided next URL.
+
+    Args:
+        client: Async HTTP client instance
+        next_url: Opaque next URL from a prior crawl status response
+        request_timeout: Timeout (in seconds) for the HTTP request
+
+    Returns:
+        CrawlJob with the page data and next URL (if any)
+
+    Raises:
+        Exception: If the request fails or returns an error response
+    """
+    response = await client.get(next_url, timeout=request_timeout)
+    if response.status_code >= 400:
+        handle_response_error(response, "get crawl status page")
+    body = response.json()
+    payload = _parse_crawl_status_response(body)
+    return CrawlJob(
+        status=payload["status"],
+        completed=payload["completed"],
+        total=payload["total"],
+        credits_used=payload["credits_used"],
+        expires_at=payload["expires_at"],
+        next=payload["next"],
+        data=payload["data"],
+    )
 
 
 async def _fetch_all_pages_async(
@@ -195,25 +251,24 @@ async def _fetch_all_pages_async(
             break
         
         page_data = response.json()
-        
-        if not page_data.get("success"):
+        try:
+            page_payload = _parse_crawl_status_response(page_data)
+        except Exception:
             break
         
         # Add documents from this page
-        for doc_data in page_data.get("data", []):
-            if isinstance(doc_data, dict):
-                # Check max_results limit
-                if (max_results is not None) and (len(documents) >= max_results):
-                    break
-                normalized = normalize_document_input(doc_data)
-                documents.append(Document(**normalized))
+        for document in page_payload["data"]:
+            # Check max_results limit
+            if (max_results is not None) and (len(documents) >= max_results):
+                break
+            documents.append(document)
         
         # Check if we hit max_results limit
         if (max_results is not None) and (len(documents) >= max_results):
             break
         
         # Get next URL
-        current_url = page_data.get("next")
+        current_url = page_payload["next"]
         page_count += 1
     
     return documents
@@ -272,7 +327,7 @@ async def crawl_params_preview(client: AsyncHttpClient, request: CrawlParamsRequ
         "includePaths": "include_paths",
         "excludePaths": "exclude_paths",
         "maxDiscoveryDepth": "max_discovery_depth",
-        "ignoreSitemap": "ignore_sitemap",
+        "sitemap": "sitemap",
         "ignoreQueryParameters": "ignore_query_parameters",
         "crawlEntireDomain": "crawl_entire_domain",
         "allowExternalLinks": "allow_external_links",
@@ -348,4 +403,3 @@ async def get_active_crawls(client: AsyncHttpClient) -> ActiveCrawlsResponse:
                 "options": c.get("options"),
             })
     return ActiveCrawlsResponse(success=True, crawls=[ActiveCrawl(**nc) for nc in normalized])
-

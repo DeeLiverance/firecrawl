@@ -29,7 +29,7 @@ type CrawlParamsPreviewResponse =
         crawlEntireDomain?: boolean;
         allowExternalLinks?: boolean;
         allowSubdomains?: boolean;
-        sitemap?: "skip" | "include";
+        sitemap?: "skip" | "include" | "only";
         ignoreQueryParameters?: boolean;
         deduplicateSimilarURLs?: boolean;
         delay?: number;

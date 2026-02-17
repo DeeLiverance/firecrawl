@@ -76,11 +76,11 @@ async function acquireBlocking(
 
   do {
     if (options.signal.aborted) {
-      throw new ScrapeJobTimeoutError("Scrape timed out");
+      throw new ScrapeJobTimeoutError();
     }
 
     if (deadline < Date.now()) {
-      throw new ScrapeJobTimeoutError("Scrape timed out");
+      throw new ScrapeJobTimeoutError();
     }
 
     const [granted, _count, _removed] = await runScript<

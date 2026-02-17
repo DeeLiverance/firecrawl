@@ -14,7 +14,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logSearch, logRequest } from "../../services/logging/log_job";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/cost-tracking";
@@ -56,7 +56,7 @@ async function scrapeX402SearchResult(
 
   try {
     if (isUrlBlocked(searchResult.url, flags)) {
-      throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
+      throw new Error("Could not scrape url: " + UNSUPPORTED_SITE_MESSAGE);
     }
     logger.info("Adding scrape job [x402]", {
       scrapeId: jobId,

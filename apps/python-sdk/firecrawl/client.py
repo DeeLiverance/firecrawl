@@ -61,6 +61,7 @@ class V2Proxy:
             self.crawl = client_instance.crawl
             self.start_crawl = client_instance.start_crawl
             self.get_crawl_status = client_instance.get_crawl_status
+            self.get_crawl_status_page = client_instance.get_crawl_status_page
             self.cancel_crawl = client_instance.cancel_crawl
             self.get_crawl_errors = client_instance.get_crawl_errors
             self.get_active_crawls = client_instance.get_active_crawls
@@ -78,6 +79,7 @@ class V2Proxy:
 
             self.start_batch_scrape = client_instance.start_batch_scrape
             self.get_batch_scrape_status = client_instance.get_batch_scrape_status
+            self.get_batch_scrape_status_page = client_instance.get_batch_scrape_status_page
             self.cancel_batch_scrape = client_instance.cancel_batch_scrape
             self.batch_scrape = client_instance.batch_scrape
             self.get_batch_scrape_errors = client_instance.get_batch_scrape_errors
@@ -127,6 +129,7 @@ class AsyncV2Proxy:
             self.start_crawl = client_instance.start_crawl
             self.wait_crawl = client_instance.wait_crawl
             self.get_crawl_status = client_instance.get_crawl_status
+            self.get_crawl_status_page = client_instance.get_crawl_status_page
             self.cancel_crawl = client_instance.cancel_crawl
             self.get_crawl_errors = client_instance.get_crawl_errors
             self.get_active_crawls = client_instance.get_active_crawls
@@ -144,6 +147,7 @@ class AsyncV2Proxy:
 
             self.start_batch_scrape = client_instance.start_batch_scrape
             self.get_batch_scrape_status = client_instance.get_batch_scrape_status
+            self.get_batch_scrape_status_page = client_instance.get_batch_scrape_status_page
             self.cancel_batch_scrape = client_instance.cancel_batch_scrape
             self.wait_batch_scrape = client_instance.wait_batch_scrape
             self.batch_scrape = client_instance.batch_scrape
@@ -198,6 +202,7 @@ class Firecrawl:
         self.start_crawl = self._v2_client.start_crawl
         self.crawl_params_preview = self._v2_client.crawl_params_preview
         self.get_crawl_status = self._v2_client.get_crawl_status
+        self.get_crawl_status_page = self._v2_client.get_crawl_status_page
         self.cancel_crawl = self._v2_client.cancel_crawl
         self.get_crawl_errors = self._v2_client.get_crawl_errors
         self.get_active_crawls = self._v2_client.get_active_crawls
@@ -205,6 +210,7 @@ class Firecrawl:
 
         self.start_batch_scrape = self._v2_client.start_batch_scrape
         self.get_batch_scrape_status = self._v2_client.get_batch_scrape_status
+        self.get_batch_scrape_status_page = self._v2_client.get_batch_scrape_status_page
         self.cancel_batch_scrape = self._v2_client.cancel_batch_scrape
         self.batch_scrape = self._v2_client.batch_scrape
         self.get_batch_scrape_errors = self._v2_client.get_batch_scrape_errors
@@ -248,6 +254,7 @@ class AsyncFirecrawl:
 
         self.start_crawl = self._v2_client.start_crawl
         self.get_crawl_status = self._v2_client.get_crawl_status
+        self.get_crawl_status_page = self._v2_client.get_crawl_status_page
         self.cancel_crawl = self._v2_client.cancel_crawl
         self.crawl = self._v2_client.crawl
         self.get_crawl_errors = self._v2_client.get_crawl_errors
@@ -256,6 +263,7 @@ class AsyncFirecrawl:
 
         self.start_batch_scrape = self._v2_client.start_batch_scrape
         self.get_batch_scrape_status = self._v2_client.get_batch_scrape_status
+        self.get_batch_scrape_status_page = self._v2_client.get_batch_scrape_status_page
         self.cancel_batch_scrape = self._v2_client.cancel_batch_scrape
         self.batch_scrape = self._v2_client.batch_scrape
         self.get_batch_scrape_errors = self._v2_client.get_batch_scrape_errors

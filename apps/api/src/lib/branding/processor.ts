@@ -515,6 +515,7 @@ export function processRawBranding(raw: BrandingScriptReturn): BrandingProfile {
     __button_snapshots: buttonSnapshots as any,
     __input_snapshots: inputSnapshots as any,
     __framework_hints: raw.frameworkHints as any,
+    __logo_candidates: raw.logoCandidates as any,
   };
 }
 

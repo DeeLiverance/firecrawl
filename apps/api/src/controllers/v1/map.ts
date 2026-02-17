@@ -95,6 +95,7 @@ export async function getMapResults({
   filterByPath = true,
   flags,
   useIndex = true,
+  ignoreCache = false,
   timeout,
   location,
   headers,
@@ -115,6 +116,7 @@ export async function getMapResults({
   filterByPath?: boolean;
   flags: TeamFlags;
   useIndex?: boolean;
+  ignoreCache?: boolean;
   timeout?: number;
   location?: ScrapeOptions["location"];
   headers?: Record<string, string>;
@@ -162,6 +164,7 @@ export async function getMapResults({
       timeout ?? 30000,
       abort,
       mock,
+      ignoreCache ? 0 : undefined,
     );
     if (sitemap > 0) {
       links = links
@@ -192,7 +195,7 @@ export async function getMapResults({
     );
 
     const cacheKey = `fireEngineMap:${mapUrl}`;
-    const cachedResult = await redis.get(cacheKey);
+    const cachedResult = ignoreCache ? null : await redis.get(cacheKey);
 
     let allResults: any[] = [];
     let pagePromises: Promise<any>[] = [];
@@ -248,6 +251,8 @@ export async function getMapResults({
           false,
           timeout ?? 30000,
           abort,
+          undefined,
+          ignoreCache ? 0 : undefined,
         );
       } catch (e) {
         logger.warn("tryGetSitemap threw an error", { error: e });
@@ -423,6 +428,7 @@ export async function mapController(
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
         useIndex: req.body.useIndex,
+        ignoreCache: req.body.ignoreCache,
         timeout: req.body.timeout,
         location: req.body.location,
         headers: req.body.headers,

@@ -20,6 +20,10 @@ import { ScrapeJobData } from "../../types";
 import { teamConcurrencySemaphore } from "../../services/worker/team-semaphore";
 import { getJobPriority } from "../../lib/job-priority";
 import { logRequest } from "../../services/logging/log_job";
+import { getErrorContactMessage } from "../../lib/deployment";
+import { captureExceptionWithZdrCheck } from "../../services/sentry";
+
+const AGENT_INTEROP_CONCURRENCY_BOOST = 3;
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -98,6 +102,8 @@ export async function scrapeController(
 
       const shouldBill = req.body.__agentInterop?.shouldBill ?? true;
       const agentRequestId = req.body.__agentInterop?.requestId ?? null;
+      const boostConcurrency =
+        req.body.__agentInterop?.boostConcurrency ?? false;
 
       const logger = _logger.child({
         method: "scrapeController",
@@ -120,7 +126,7 @@ export async function scrapeController(
       });
 
       if (!agentRequestId) {
-        await logRequest({
+        logRequest({
           id: jobId,
           kind: "scrape",
           api_version: "v2",
@@ -130,7 +136,9 @@ export async function scrapeController(
           target_hint: req.body.url,
           zeroDataRetention: zeroDataRetention || false,
           api_key_id: req.acuc?.api_key_id ?? null,
-        });
+        }).catch(err =>
+          logger.warn("Background request log failed", { error: err, jobId }),
+        );
       }
 
       setSpanAttributes(span, {
@@ -170,10 +178,15 @@ export async function scrapeController(
         }
         req.on("close", () => aborter.abort());
 
+        const baseConcurrency = req.acuc?.concurrency || 1;
+        const concurrency = boostConcurrency
+          ? baseConcurrency * AGENT_INTEROP_CONCURRENCY_BOOST
+          : baseConcurrency;
+
         doc = await teamConcurrencySemaphore.withSemaphore(
           req.auth.team_id,
           jobId,
-          req.acuc?.concurrency || 1,
+          concurrency,
           aborter.signal,
           timeout ?? 60_000,
           async limited => {
@@ -258,13 +271,6 @@ export async function scrapeController(
         const timeoutErr =
           e instanceof TransportableError && e.code === "SCRAPE_TIMEOUT";
 
-        if (!timeoutErr) {
-          logger.error(`Error in scrapeController`, {
-            version: "v2",
-            error: e,
-          });
-        }
-
         setSpanAttributes(span, {
           "scrape.error": e instanceof Error ? e.message : String(e),
           "scrape.error_type":
@@ -272,6 +278,12 @@ export async function scrapeController(
         });
 
         if (e instanceof TransportableError) {
+          if (!timeoutErr) {
+            logger.error(`Error in scrapeController`, {
+              version: "v2",
+              error: e,
+            });
+          }
           // DNS resolution errors should return 200 with success: false
           if (e.code === "SCRAPE_DNS_RESOLUTION_ERROR") {
             setSpanAttributes(span, {
@@ -295,6 +307,17 @@ export async function scrapeController(
             });
           }
 
+          if (e.code === "SCRAPE_ACTIONS_NOT_SUPPORTED") {
+            setSpanAttributes(span, {
+              "scrape.status_code": 400,
+            });
+            return res.status(400).json({
+              success: false,
+              code: e.code,
+              error: e.message,
+            });
+          }
+
           const statusCode = e.code === "SCRAPE_TIMEOUT" ? 408 : 500;
           setSpanAttributes(span, {
             "scrape.status_code": statusCode,
@@ -305,12 +328,34 @@ export async function scrapeController(
             error: e.message,
           });
         } else {
+          const id = uuidv7();
+          logger.error(`Error in scrapeController`, {
+            version: "v2",
+            error: e,
+            errorId: id,
+            path: req.path,
+            teamId: req.auth.team_id,
+          });
+          captureExceptionWithZdrCheck(e, {
+            tags: {
+              errorId: id,
+              version: "v2",
+              teamId: req.auth.team_id,
+            },
+            extra: {
+              path: req.path,
+              url: req.body.url,
+            },
+            zeroDataRetention,
+          });
           setSpanAttributes(span, {
             "scrape.status_code": 500,
+            "scrape.error_id": id,
           });
           return res.status(500).json({
             success: false,
-            error: `(Internal server error) - ${e && e.message ? e.message : e}`,
+            code: "UNKNOWN_ERROR",
+            error: getErrorContactMessage(id),
           });
         }
       } finally {

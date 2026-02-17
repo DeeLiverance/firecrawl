@@ -1,7 +1,7 @@
-import { type AgentResponse, type AgentStatusResponse } from "../types";
+import { type AgentResponse, type AgentStatusResponse, type AgentWebhookConfig } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { normalizeAxiosError, throwForBadResponse } from "../utils/errorHandler";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { isZodSchema, zodSchemaToJsonSchema } from "../../utils/zodSchemaToJson";
 import type { ZodTypeAny } from "zod";
 
 function prepareAgentPayload(args: {
@@ -11,18 +11,20 @@ function prepareAgentPayload(args: {
   integration?: string;
   maxCredits?: number;
   strictConstrainToURLs?: boolean;
+  model?: "spark-1-pro" | "spark-1-mini";
+  webhook?: string | AgentWebhookConfig;
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (args.urls) body.urls = args.urls;
   body.prompt = args.prompt;
   if (args.schema != null) {
-    const s: any = args.schema;
-    const isZod = s && (typeof s.safeParse === "function" || typeof s.parse === "function") && s._def;
-    body.schema = isZod ? zodToJsonSchema(s) : args.schema;
+    body.schema = isZodSchema(args.schema) ? zodSchemaToJsonSchema(args.schema) : args.schema;
   }
   if (args.integration && args.integration.trim()) body.integration = args.integration.trim();
   if (args.maxCredits !== null && args.maxCredits !== undefined) body.maxCredits = args.maxCredits;
   if (args.strictConstrainToURLs !== null && args.strictConstrainToURLs !== undefined) body.strictConstrainToURLs = args.strictConstrainToURLs;
+  if (args.model !== null && args.model !== undefined) body.model = args.model;
+  if (args.webhook != null) body.webhook = args.webhook;
   return body;
 }
 

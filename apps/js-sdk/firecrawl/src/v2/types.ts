@@ -153,7 +153,7 @@ export interface ScrapeOptions {
   fastMode?: boolean;
   useMock?: string;
   blockAds?: boolean;
-  proxy?: 'basic' | 'stealth' | 'auto' | string;
+  proxy?: 'basic' | 'stealth' | 'enhanced' | 'auto' | string;
   maxAge?: number;
   minAge?: number;
   storeInCache?: boolean;
@@ -165,6 +165,16 @@ export interface WebhookConfig {
   headers?: Record<string, string>;
   metadata?: Record<string, string>;
   events?: Array<'completed' | 'failed' | 'page' | 'started'>;
+}
+
+// Agent webhook events differ from crawl: has 'action' and 'cancelled', no 'page'
+export type AgentWebhookEvent = 'started' | 'action' | 'completed' | 'failed' | 'cancelled';
+
+export interface AgentWebhookConfig {
+  url: string;
+  headers?: Record<string, string>;
+  metadata?: Record<string, string>;
+  events?: AgentWebhookEvent[];
 }
 
 export interface BrandingProfile {
@@ -450,7 +460,7 @@ export interface CrawlOptions {
   excludePaths?: string[] | null;
   includePaths?: string[] | null;
   maxDiscoveryDepth?: number | null;
-  sitemap?: 'skip' | 'include';
+  sitemap?: 'skip' | 'include' | 'only';
   ignoreQueryParameters?: boolean;
   limit?: number | null;
   crawlEntireDomain?: boolean;
@@ -546,6 +556,7 @@ export interface AgentStatusResponse {
   status: 'processing' | 'completed' | 'failed';
   error?: string;
   data?: unknown;
+  model?: 'spark-1-pro' | 'spark-1-mini';
   expiresAt: string;
   creditsUsed?: number;
 }
@@ -671,4 +682,47 @@ export interface QueueStatusResponse {
   waitingJobsInQueue: number;
   maxConcurrency: number;
   mostRecentSuccess: string | null;
+}
+
+// Browser types
+export interface BrowserCreateResponse {
+  success: boolean;
+  id?: string;
+  cdpUrl?: string;
+  liveViewUrl?: string;
+  expiresAt?: string;
+  error?: string;
+}
+
+export interface BrowserExecuteResponse {
+  success: boolean;
+  stdout?: string;
+  result?: string;
+  stderr?: string;
+  exitCode?: number;
+  killed?: boolean;
+  error?: string;
+}
+
+export interface BrowserDeleteResponse {
+  success: boolean;
+  sessionDurationMs?: number;
+  creditsBilled?: number;
+  error?: string;
+}
+
+export interface BrowserSession {
+  id: string;
+  status: string;
+  cdpUrl: string;
+  liveViewUrl: string;
+  streamWebView: boolean;
+  createdAt: string;
+  lastActivity: string;
+}
+
+export interface BrowserListResponse {
+  success: boolean;
+  sessions?: BrowserSession[];
+  error?: string;
 }

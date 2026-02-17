@@ -64,6 +64,30 @@ describe("rewriteUrl", () => {
       );
     });
 
+    it("should preserve gid parameter from query string for specific sheet tab", () => {
+      const url =
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/edit?gid=89683736";
+      expect(rewriteUrl(url)).toBe(
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/gviz/tq?tqx=out:html&gid=89683736",
+      );
+    });
+
+    it("should preserve gid parameter from hash fragment for specific sheet tab", () => {
+      const url =
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/edit#gid=89683736";
+      expect(rewriteUrl(url)).toBe(
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/gviz/tq?tqx=out:html&gid=89683736",
+      );
+    });
+
+    it("should preserve gid parameter when both query and hash have gid (uses first match)", () => {
+      const url =
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/edit?gid=89683736#gid=89683736";
+      expect(rewriteUrl(url)).toBe(
+        "https://docs.google.com/spreadsheets/d/1dhyxGttUbI2RlTxPXF4CQcY4TD2k6Jp7-hcqS9PP5uc/gviz/tq?tqx=out:html&gid=89683736",
+      );
+    });
+
     it("should NOT rewrite published Google Sheets URLs (/d/e/)", () => {
       const url =
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSomePublishId/pubhtml";

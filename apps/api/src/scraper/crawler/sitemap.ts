@@ -102,10 +102,13 @@ async function getSitemapXML(options: SitemapScrapeOptions): Promise<string> {
   ) {
     return response.document.rawHtml!;
   } else if (!response.success) {
-    throw new SitemapError("Failed to scrape sitemap", response.error);
+    throw new SitemapError(
+      `Failed to fetch the sitemap from the website. The request failed with an error. This usually happens when: (1) The sitemap URL is incorrect, (2) The website is blocking access to the sitemap, (3) The website is down or unreachable, or (4) The sitemap requires authentication. Error details: ${response.error}`,
+      response.error,
+    );
   } else {
     throw new SitemapError(
-      "Failed to scrape sitemap",
+      `Failed to fetch the sitemap from the website. The server returned HTTP status code ${response.document.metadata.statusCode}. This usually means: (1) The sitemap doesn't exist at this URL (404), (2) Access is forbidden (403), or (3) The server encountered an error (5xx). Verify the sitemap URL is correct and accessible.`,
       response.document.metadata.statusCode,
     );
   }
@@ -141,7 +144,10 @@ export async function scrapeSitemap(
       errorMessage.includes("XML parsing error") ||
       errorMessage.includes("Parse sitemap error")
     ) {
-      throw new SitemapError(errorMessage, error);
+      throw new SitemapError(
+        `The sitemap XML could not be parsed because it contains invalid or malformed XML. This is a problem with the website's sitemap, not with your request. Details: ${errorMessage}. The website owner should fix their sitemap to be valid XML. You can try using a different starting URL or the /map endpoint instead.`,
+        error,
+      );
     }
     throw error;
   }

@@ -19,6 +19,7 @@ import {
   BatchScrapeRequestInput,
   SearchRequest,
   SearchRequestInput,
+  toV2CrawlerOptions,
 } from "../../../controllers/v2/types";
 
 describe("V2 Types Validation", () => {
@@ -606,11 +607,11 @@ describe("V2 Types Validation", () => {
     it("should handle sitemap enum values", () => {
       const input: CrawlRequestInput = {
         url: "https://example.com",
-        sitemap: "include",
+        sitemap: "only",
       };
 
       const result = crawlRequestSchema.parse(input);
-      expect(result.sitemap).toBe("include");
+      expect(result.sitemap).toBe("only");
     });
 
     it("should reject invalid sitemap value", () => {
@@ -620,6 +621,15 @@ describe("V2 Types Validation", () => {
       };
 
       expect(() => crawlRequestSchema.parse(input)).toThrow();
+    });
+
+    it("should map sitemapOnly to sitemap=only", () => {
+      const result = toV2CrawlerOptions({
+        sitemapOnly: true,
+        ignoreSitemap: false,
+      });
+
+      expect(result.sitemap).toBe("only");
     });
   });
 

@@ -57,9 +57,12 @@ export function getModel(name: string, provider: Provider = defaultProvider) {
   if (name === "gemini-2.5-pro") {
     name = "gemini-2.5-pro";
   }
-  return config.MODEL_NAME
-    ? providerList[provider](config.MODEL_NAME)
-    : providerList[provider](name);
+  const modelName = config.MODEL_NAME || name;
+  // o3-mini returns empty text via the Responses API — force Chat Completions
+  if (provider === "openai" && modelName.startsWith("o3-mini")) {
+    return providerList.openai.chat(modelName);
+  }
+  return providerList[provider](modelName);
 }
 
 export function getEmbeddingModel(

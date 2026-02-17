@@ -27,17 +27,17 @@ interface FilterResult {
 }
 
 enum DenialReason {
-  DEPTH_LIMIT = "URL exceeds maximum crawl depth",
-  EXCLUDE_PATTERN = "URL matches exclude pattern",
-  INCLUDE_PATTERN = "URL does not match required include pattern",
-  ROBOTS_TXT = "URL blocked by robots.txt",
-  FILE_TYPE = "URL points to a file type that is not crawled",
-  URL_PARSE_ERROR = "URL could not be parsed",
-  BACKWARD_CRAWLING = "URL cannot be crawled unless crawlEntireDomain is set to true",
-  SOCIAL_MEDIA = "URL is a social media or email link",
-  EXTERNAL_LINK = "External URL not allowed",
-  SECTION_LINK = "URL contains section anchor (#)",
-  NON_WEB_PROTOCOL = "URL uses a non-web protocol (telnet, ftp, ssh, file, mailto, etc.)",
+  DEPTH_LIMIT = "This URL exceeds the maximum crawl depth you configured. The URL's depth (number of path segments) is greater than the maxDepth parameter. To crawl this URL, increase the maxDepth value in your crawl request.",
+  EXCLUDE_PATTERN = "This URL's path matches one of the regex patterns you provided in the excludePaths parameter. URLs matching excludePaths are intentionally skipped during crawling. If this URL should be crawled, adjust your excludePaths patterns.",
+  INCLUDE_PATTERN = "This URL's path does not match any of the regex patterns you provided in the includePaths parameter. When includePaths is specified, only URLs matching at least one pattern are crawled. If this URL should be crawled, add a matching pattern to includePaths or remove the includePaths restriction.",
+  ROBOTS_TXT = "This URL is blocked by the website's robots.txt file, which instructs crawlers not to access this page. Firecrawl respects robots.txt by default. To crawl this URL anyway, set ignoreRobotsTxt: true in your crawl request (note: this may violate the website's crawling policies).",
+  FILE_TYPE = "This URL points to a file type that Firecrawl does not crawl (e.g., images, videos, fonts, archives). Firecrawl automatically skips non-document file extensions like .png, .jpg, .mp4, .zip, .css, .js, etc.",
+  URL_PARSE_ERROR = "This URL could not be parsed as a valid URL. The URL may be malformed, contain invalid characters, or use an unsupported format. Please verify the URL is correctly formatted.",
+  BACKWARD_CRAWLING = "This URL is outside the initial URL's path hierarchy, and backward crawling is disabled. By default, Firecrawl only crawls URLs that are 'below' or 'within' the starting URL path. To crawl this URL, either set allowBackwardCrawling: true or set crawlEntireDomain: true to crawl the entire domain.",
+  SOCIAL_MEDIA = "This URL points to a social media platform or is an email link. Firecrawl automatically skips social media links and mailto: links during crawling.",
+  EXTERNAL_LINK = "This URL points to a different domain than the one being crawled, and external links are disabled. By default, Firecrawl only crawls URLs on the same domain as the starting URL. To crawl external links, set allowExternalLinks: true in your crawl request.",
+  SECTION_LINK = "This URL contains a section anchor (#) and points to a specific section of a page rather than a separate page. Firecrawl treats these as duplicates of the base URL and skips them to avoid crawling the same content multiple times.",
+  NON_WEB_PROTOCOL = "This URL uses a non-web protocol (such as mailto:, tel:, ftp:, ssh:, file:, or telnet:) that Firecrawl cannot scrape. Firecrawl only supports HTTP and HTTPS protocols.",
 }
 
 interface FilterLinksResult {
@@ -165,7 +165,7 @@ export class WebCrawler {
         maxDiscoveryDepth: this.maxDiscoveryDepth,
       });
       sitemapLinks.forEach(link => {
-        denialReasons.set(link, "Maximum discovery depth reached");
+        denialReasons.set(link, `This URL was not crawled because the maximum discovery depth (${this.maxDiscoveryDepth}) has been reached. Discovery depth counts how many 'hops' from the starting URL a page is. To crawl more pages, increase the maxDiscoveryDepth value in your crawl request.`);
       });
       return { links: [], denialReasons };
     }
@@ -194,7 +194,60 @@ export class WebCrawler {
 
       const fancyDenialReasons = new Map<string, string>();
       Object.entries(res.denialReasons).forEach(([key, value]) => {
-        fancyDenialReasons.set(key, DenialReason[value]);
+        // Generate dynamic context for specific denial reasons
+        let urlPath: string;
+        try {
+          urlPath = new URL(key).pathname;
+        } catch {
+          urlPath = key;
+        }
+        const excincPath = this.regexOnFullURL ? key : urlPath;
+
+        switch (value) {
+          case "DEPTH_LIMIT":
+            const depth = getURLDepth(key);
+            fancyDenialReasons.set(
+              key,
+              `This URL exceeds the maximum crawl depth you configured. The URL's depth is ${depth}, but maxDepth is set to ${maxDepth}. To crawl this URL, increase the maxDepth value in your crawl request.`,
+            );
+            break;
+          case "EXCLUDE_PATTERN":
+            const matchingExclude = this.excludes.find(p => {
+              try {
+                return new RegExp(p).test(excincPath);
+              } catch {
+                return false;
+              }
+            });
+            fancyDenialReasons.set(
+              key,
+              `This URL's path ("${excincPath}") matches the exclude pattern "${matchingExclude ?? "(unknown)"}" you provided in the excludePaths parameter. URLs matching excludePaths are intentionally skipped during crawling. If this URL should be crawled, adjust your excludePaths patterns.`,
+            );
+            break;
+          case "INCLUDE_PATTERN":
+            fancyDenialReasons.set(
+              key,
+              `This URL's path ("${excincPath}") does not match any of the regex patterns you provided in the includePaths parameter: [${this.includes.map(p => `"${p}"`).join(", ")}]. When includePaths is specified, only URLs matching at least one pattern are crawled. If this URL should be crawled, add a matching pattern to includePaths or remove the includePaths restriction.`,
+            );
+            break;
+          case "BACKWARD_CRAWLING":
+            const initialPath = new URL(this.initialUrl).pathname;
+            fancyDenialReasons.set(
+              key,
+              `This URL's path ("${urlPath}") is outside the initial URL's path hierarchy ("${initialPath}"), and backward crawling is disabled. By default, Firecrawl only crawls URLs that are 'below' or 'within' the starting URL path. To crawl this URL, either set allowBackwardCrawling: true or set crawlEntireDomain: true to crawl the entire domain.`,
+            );
+            break;
+          case "FILE_TYPE":
+            const extension = key.split("?")[0].split(".").pop()?.toLowerCase();
+            fancyDenialReasons.set(
+              key,
+              `This URL points to a file with extension ".${extension}" that Firecrawl does not crawl. Firecrawl automatically skips non-document file extensions like .png, .jpg, .mp4, .zip, .css, .js, etc. to focus on web pages with textual content.`,
+            );
+            break;
+          default:
+            // Use the static enum message for other cases
+            fancyDenialReasons.set(key, DenialReason[value]);
+        }
       });
 
       if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
@@ -258,7 +311,10 @@ export class WebCrawler {
           if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
             this.logger.debug(`${link} DEPTH FAIL`);
           }
-          denialReasons.set(link, DenialReason.DEPTH_LIMIT);
+          denialReasons.set(
+            link,
+            `This URL exceeds the maximum crawl depth you configured. The URL's depth is ${depth}, but maxDepth is set to ${maxDepth}. To crawl this URL, increase the maxDepth value in your crawl request.`,
+          );
           return false;
         }
 
@@ -266,15 +322,17 @@ export class WebCrawler {
 
         // Check if the link should be excluded
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
-          if (
-            this.excludes.some(excludePattern =>
-              new RegExp(excludePattern).test(excincPath),
-            )
-          ) {
+          const matchingPattern = this.excludes.find(excludePattern =>
+            new RegExp(excludePattern).test(excincPath),
+          );
+          if (matchingPattern) {
             if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
               this.logger.debug(`${link} EXCLUDE FAIL`);
             }
-            denialReasons.set(link, DenialReason.EXCLUDE_PATTERN);
+            denialReasons.set(
+              link,
+              `This URL's path ("${excincPath}") matches the exclude pattern "${matchingPattern}" you provided in the excludePaths parameter. URLs matching excludePaths are intentionally skipped during crawling. If this URL should be crawled, adjust your excludePaths patterns.`,
+            );
             return false;
           }
         }
@@ -289,7 +347,10 @@ export class WebCrawler {
             if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
               this.logger.debug(`${link} INCLUDE FAIL`);
             }
-            denialReasons.set(link, DenialReason.INCLUDE_PATTERN);
+            denialReasons.set(
+              link,
+              `This URL's path ("${excincPath}") does not match any of the regex patterns you provided in the includePaths parameter: [${this.includes.map(p => `"${p}"`).join(", ")}]. When includePaths is specified, only URLs matching at least one pattern are crawled. If this URL should be crawled, add a matching pattern to includePaths or remove the includePaths restriction.`,
+            );
             return false;
           }
         }
@@ -326,7 +387,10 @@ export class WebCrawler {
                 `${link} BACKWARDS FAIL ${normalizedLink.pathname} ${normalizedInitialUrl.pathname}`,
               );
             }
-            denialReasons.set(link, DenialReason.BACKWARD_CRAWLING);
+            denialReasons.set(
+              link,
+              `This URL's path ("${normalizedLink.pathname}") is outside the initial URL's path hierarchy ("${normalizedInitialUrl.pathname}"), and backward crawling is disabled. By default, Firecrawl only crawls URLs that are 'below' or 'within' the starting URL path. To crawl this URL, either set allowBackwardCrawling: true or set crawlEntireDomain: true to crawl the entire domain.`,
+            );
             return false;
           }
         }
@@ -346,7 +410,10 @@ export class WebCrawler {
           if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
             this.logger.debug(`${link} ROBOTS FAIL`);
           }
-          denialReasons.set(link, DenialReason.ROBOTS_TXT);
+          denialReasons.set(
+            link,
+            `This URL is blocked by the website's robots.txt file, which instructs crawlers not to access this page. Firecrawl respects robots.txt by default. To crawl this URL anyway, set ignoreRobotsTxt: true in your crawl request (note: this may violate the website's crawling policies).`,
+          );
           return false;
         }
 
@@ -354,7 +421,11 @@ export class WebCrawler {
           if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
             this.logger.debug(`${link} FILE FAIL`);
           }
-          denialReasons.set(link, DenialReason.FILE_TYPE);
+          const extension = link.split("?")[0].split(".").pop()?.toLowerCase();
+          denialReasons.set(
+            link,
+            `This URL points to a file with extension ".${extension}" that Firecrawl does not crawl. Firecrawl automatically skips non-document file extensions like .png, .jpg, .mp4, .zip, .css, .js, etc. to focus on web pages with textual content.`,
+          );
           return false;
         }
 
@@ -441,6 +512,7 @@ export class WebCrawler {
     timeout: number = 120000,
     abort?: AbortSignal,
     mock?: string,
+    maxAge: number = SITEMAP_MAX_AGE,
   ): Promise<number> {
     this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, {
       method: "tryGetSitemap",
@@ -523,7 +595,7 @@ export class WebCrawler {
             _urlsHandler,
             abort,
             mock,
-            SITEMAP_MAX_AGE,
+            maxAge,
           ),
           ...robotsSitemaps.map(x =>
             this.tryFetchSitemapLinks(
@@ -531,7 +603,7 @@ export class WebCrawler {
               _urlsHandler,
               abort,
               mock,
-              SITEMAP_MAX_AGE,
+              maxAge,
             ),
           ),
         ]).then(results => results.reduce((a, x) => a + x, 0)),

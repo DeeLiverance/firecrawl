@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from firecrawl.v2.methods.agent import _prepare_agent_request
+from firecrawl.v2.types import AgentWebhookConfig
 
 
 class TestAgentRequestPreparation:
@@ -223,4 +224,116 @@ class TestAgentRequestPreparation:
                 prompt="Test prompt",
                 schema=["not", "a", "valid", "schema"]
             )
+
+    def test_request_with_string_webhook(self):
+        """Test request preparation with string webhook URL."""
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt",
+            webhook="https://example.com/webhook"
+        )
+
+        assert data["webhook"] == "https://example.com/webhook"
+
+    def test_request_with_webhook_config(self):
+        """Test request preparation with AgentWebhookConfig object."""
+        webhook_config = AgentWebhookConfig(
+            url="https://example.com/webhook",
+            headers={"Authorization": "Bearer token"},
+            events=["completed", "failed"]
+        )
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt",
+            webhook=webhook_config
+        )
+
+        assert data["webhook"]["url"] == "https://example.com/webhook"
+        assert data["webhook"]["headers"] == {"Authorization": "Bearer token"}
+        assert data["webhook"]["events"] == ["completed", "failed"]
+
+    def test_request_without_webhook(self):
+        """Test that webhook is not included when None."""
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt"
+        )
+
+        assert "webhook" not in data
+
+    def test_webhook_config_excludes_none_values(self):
+        """Test that None values are excluded from webhook config."""
+        webhook_config = AgentWebhookConfig(
+            url="https://example.com/webhook"
+        )
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt",
+            webhook=webhook_config
+        )
+
+        assert "headers" not in data["webhook"]
+        assert "metadata" not in data["webhook"]
+        assert "events" not in data["webhook"]
+
+    def test_agent_specific_webhook_events(self):
+        """Test that agent-specific events (action, cancelled) are accepted."""
+        webhook_config = AgentWebhookConfig(
+            url="https://example.com/webhook",
+            events=["started", "action", "completed", "failed", "cancelled"]
+        )
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt",
+            webhook=webhook_config
+        )
+
+        assert "action" in data["webhook"]["events"]
+        assert "cancelled" in data["webhook"]["events"]
+
+    def test_webhook_with_metadata(self):
+        """Test webhook config with metadata."""
+        webhook_config = AgentWebhookConfig(
+            url="https://example.com/webhook",
+            metadata={"project": "test", "env": "staging"}
+        )
+        data = _prepare_agent_request(
+            None,
+            prompt="Test prompt",
+            webhook=webhook_config
+        )
+
+        assert data["webhook"]["metadata"] == {"project": "test", "env": "staging"}
+
+    def test_request_all_fields_with_webhook(self):
+        """Test request preparation with all fields including webhook."""
+        schema = {
+            "type": "object",
+            "properties": {"test": {"type": "string"}}
+        }
+        urls = ["https://example.com"]
+        webhook_config = AgentWebhookConfig(
+            url="https://example.com/webhook",
+            events=["completed"]
+        )
+
+        data = _prepare_agent_request(
+            urls,
+            prompt="Complete test",
+            schema=schema,
+            integration="test-integration",
+            max_credits=50,
+            strict_constrain_to_urls=True,
+            model="spark-1-pro",
+            webhook=webhook_config
+        )
+
+        assert data["prompt"] == "Complete test"
+        assert data["urls"] == urls
+        assert data["schema"] == schema
+        assert data["integration"] == "test-integration"
+        assert data["maxCredits"] == 50
+        assert data["strictConstrainToURLs"] is True
+        assert data["model"] == "spark-1-pro"
+        assert data["webhook"]["url"] == "https://example.com/webhook"
 

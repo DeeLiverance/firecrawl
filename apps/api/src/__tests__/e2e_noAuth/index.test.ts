@@ -1,6 +1,6 @@
 import request from "supertest";
 import { config } from "../../config";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { UNSUPPORTED_SITE_MESSAGE } from "../../lib/strings";
 const fs = require("fs");
 const path = require("path");
 
@@ -52,14 +52,14 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).not.toBe(401);
     });
 
-    it("should return an error for a blocklisted URL without requiring authorization", async () => {
-      const blocklistedUrl = "https://facebook.com/fake-test";
+    it("should return an error for a unsupported URL without requiring authorization", async () => {
+      const unsupportedUrl = "https://facebook.com/fake-test";
       const response = await request(TEST_URL)
         .post("/v0/scrape")
         .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
+        .send({ url: unsupportedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
+      expect(response.body.error).toContain(UNSUPPORTED_SITE_MESSAGE);
     });
 
     it("should return a successful response", async () => {
@@ -77,14 +77,14 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).not.toBe(401);
     });
 
-    it("should return an error for a blocklisted URL", async () => {
-      const blocklistedUrl = "https://twitter.com/fake-test";
+    it("should return an error for a unsupported URL", async () => {
+      const unsupportedUrl = "https://twitter.com/fake-test";
       const response = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
+        .send({ url: unsupportedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
+      expect(response.body.error).toContain(UNSUPPORTED_SITE_MESSAGE);
     });
 
     it("should return a successful response", async () => {
@@ -106,14 +106,14 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).not.toBe(401);
     });
 
-    it("should return an error for a blocklisted URL", async () => {
-      const blocklistedUrl = "https://instagram.com/fake-test";
+    it("should return an error for a unsupported URL", async () => {
+      const unsupportedUrl = "https://instagram.com/fake-test";
       const response = await request(TEST_URL)
         .post("/v0/crawlWebsitePreview")
         .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
+        .send({ url: unsupportedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
+      expect(response.body.error).toContain(UNSUPPORTED_SITE_MESSAGE);
     });
 
     it("should return a successful response", async () => {
