@@ -12,6 +12,9 @@ A Python script that crawls a website and generates RAG-ready output files for L
 - Docker API health checks
 - Domain-based output naming
 - Include/exclude path filters (e.g., crawl only `/docs/*`)
+- Coverage checks (warns when `--limit`/`--max-depth` may clip results)
+- Coverage retry (automatically retries crawl if main result is far below pre-scan estimate)
+- Telemetry logging to `output/_telemetry/crawl_runs.jsonl`
 
 ## Requirements
 
@@ -53,7 +56,7 @@ The script will prompt for:
 
 ```bash
 python tools/crawl_to_markdown.py \
-  --url "https://example.com" \
+  "https://example.com" \
   --api-url "http://localhost:3002" \
   --limit 50 \
   --max-depth 2 \
@@ -62,18 +65,35 @@ python tools/crawl_to_markdown.py \
   --exclude-paths "/blog/*"
 ```
 
+### Default Pre-Scan + Auto-Tune
+
+```bash
+python tools/crawl_to_markdown.py \
+  "https://docs.api.pracsuite.com/" \
+  --pre-scan-limit 300 \
+  --pre-scan-max-depth 8
+```
+
+Pre-scan and auto-tune are enabled by default. The script estimates page count/depth first, then raises `--limit`/`--max-depth` when needed.
+
+To skip it:
+
+```bash
+python tools/crawl_to_markdown.py "https://example.com" --no-pre-scan --no-auto-tune
+```
+
 ### Docs-only Example
 
 ```bash
 python tools/crawl_to_markdown.py \
-  --url "https://elevenlabs.io/docs/" \
+  "https://elevenlabs.io/docs/" \
   --include-paths "/docs/*" \
   --extra-formats ""
 ```
 
 ### Parameters
 
-- `--url`: Website URL to crawl
+- `url`: Website URL to crawl (positional)
 - `--api-url`: Firecrawl API endpoint
 - `--limit`: Maximum number of pages (default: 100)
 - `--max-depth`: Maximum crawl depth (default: 3)
@@ -82,10 +102,20 @@ python tools/crawl_to_markdown.py \
 - `--exclude-paths`: Comma-separated path globs to exclude (e.g., `/blog/*`)
 - `--poll-interval`: Status polling interval in seconds (default: 5)
 - `--timeout`: Crawl timeout in seconds (default: 600)
+- `--telemetry-file`: JSONL file for crawl telemetry (default: `output/_telemetry/crawl_runs.jsonl`)
+- `--disable-telemetry`: Turn off telemetry logging
+- `--pre-scan`: Enable lightweight estimation before the main crawl (default: on)
+- `--no-pre-scan`: Disable pre-scan
+- `--auto-tune`: Enable applying pre-scan recommendations (default: on)
+- `--no-auto-tune`: Disable applying pre-scan recommendations
+- `--pre-scan-limit`: Max pages pre-scan can explore (default: 200)
+- `--pre-scan-max-depth`: Max depth used by pre-scan (default: 8)
+- `--pre-scan-timeout`: Pre-scan timeout in seconds (default: 300)
+- `--coverage-threshold`: Minimum main-crawl coverage vs pre-scan estimate before retry (default: 0.9)
 
 ## Output
 
-Files are saved to `output/<domain>/`:
+Files are saved to repo-root `output/<domain>/`:
 
 - `<domain>.json` - Structured data with document IDs
 - `<domain>_index.md` - Indexed markdown with JSON references
@@ -95,7 +125,7 @@ Files are saved to `output/<domain>/`:
 ## Example
 
 ```bash
-python tools/crawl_to_markdown.py --url "https://www.biotunechiropractic.com.au/"
+python tools/crawl_to_markdown.py "https://www.biotunechiropractic.com.au/"
 ```
 
 Output:
@@ -128,6 +158,9 @@ The script:
 ## Notes
 
 - The script automatically checks if the Docker API is running
+- Pre-scan + auto-tune runs by default and adds an extra crawl step before the main crawl
+- If main crawl returns far fewer pages than pre-scan estimate, the script retries once with stronger depth/limit
 - JSON files include numeric IDs for easy LLM reference
 - Markdown files include links to corresponding JSON data
+- Telemetry logs include job id, runtime, depth distribution, and coverage signals
 - Use Ctrl+C to cancel crawling at any time

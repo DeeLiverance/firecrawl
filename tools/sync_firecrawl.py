@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -137,6 +138,10 @@ def main() -> None:
         (REPO_ROOT / entry.strip()) for entry in args.protected.split(",") if entry.strip()
     ]
 
+    # Ensure we are not inside a protected directory during restore.
+    # This avoids Windows file locking issues (e.g. running from tools/).
+    os.chdir(REPO_ROOT)
+
     print("Checking for clean working tree...")
     ensure_clean_worktree()
 
@@ -148,6 +153,7 @@ def main() -> None:
     run_git(["fetch", args.remote, args.branch])
 
     print(f"Merging {target_ref} into current branch...")
+    before_head = run_git(["rev-parse", "HEAD"]).strip()
     try:
         run_git(["merge", "--no-edit", target_ref])
     except CommandError as merge_error:
@@ -155,12 +161,16 @@ def main() -> None:
         if archives:
             restore_paths(archives)
         raise SystemExit(str(merge_error))
+    after_head = run_git(["rev-parse", "HEAD"]).strip()
+    merged_new_commits = before_head != after_head
 
-    if archives:
+    if archives and merged_new_commits:
         print("Restoring protected paths...")
         restore_paths(archives)
         stage_paths(protected_paths)
         print("Protected paths restored and staged.")
+    elif archives:
+        print("No new upstream commits merged; skipping protected path restore.")
 
     print("Sync complete. Review and commit as needed.")
 
