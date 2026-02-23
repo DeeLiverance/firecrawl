@@ -45,6 +45,9 @@ gke-key.json
 
 CLAUDE.local.md
 
+# git sync script logs
+git_sync*.log
+
 *.egg-info/
 # local SDK venv
 apps/python-sdk/.venv/
