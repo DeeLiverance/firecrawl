@@ -1,0 +1,69 @@
+{
+  "page_number": 3,
+  "total_pages": 4,
+  "source_file": "BioTune prices ect.pdf",
+  "content": {
+    "markdown": "Chiropractic Treatments - Phone Scripts ABC (Advanced Biostructural Correction): Our chiropractors use gentle hands-on adjustments to the spine and ribs, to improve posture and overall body alignment, so your body moves and feels better naturally. Jill's Treatment: Jill uses a style of treatment that combines chiropractic adjustments with a variety of soft tissue treatments to help ease pain, improve posture, and make movement easier. Dry Needling & Soft Tissue Work: Our chiropractors use techniques like Dry Needling, Trigger Point Therapy, and Gua Sha to release tight muscles, reduce tension, and help you move more comfortably. Infant Chiropractic: Matt offers gentle chiropractic care for babies to support their comfort and healthy development. Matt will carefully check your baby's spine, joints, and posture using very light, safe techniques. This helps ease any tension and supports their natural growth. Matt offers appointments at both Joondalup (Monday between 1-1.30pm only) and Yanchep locations. Children Chiropractic: Our chiropractors offer gentle chiropractic care for children to support their growth and overall wellbeing. They will assess posture, movement, and musculoskeletal function, and provide age-appropriate care to help your child move comfortably and feel their best as they grow. Endonasal Cranial Correction: A technique that uses a small, inflatable balloon inserted into the nasal cavity to adjust and restore proper alignment of the skull and face.",
+    "text": "Chiropractic Treatments - Phone Scripts ABC (Advanced Biostructural Correction): Our chiropractors use gentle hands-on adjustments to the spine and ribs, to improve posture and overall body alignment, so your body moves and feels better naturally. Jill's Treatment: Jill uses a style of treatment that combines chiropractic adjustments with a variety of soft tissue treatments to help ease pain, improve posture, and make movement easier. Dry Needling & Soft Tissue Work: Our chiropractors use techniques like Dry Needling, Trigger Point Therapy, and Gua Sha to release tight muscles, reduce tension, and help you move more comfortably. Infant Chiropractic: Matt offers gentle chiropractic care for babies to support their comfort and healthy development. Matt will carefully check your baby's spine, joints, and posture using very light, safe techniques. This helps ease any tension and supports their natural growth. Matt offers appointments at both Joondalup (Monday between 1-1.30pm only) and Yanchep locations. Children Chiropractic: Our chiropractors offer gentle chiropractic care for children to support their growth and overall wellbeing. They will assess posture, movement, and musculoskeletal function, and provide age-appropriate care to help your child move comfortably and feel their best as they grow. Endonasal Cranial Correction: A technique that uses a small, inflatable balloon inserted into the nasal cavity to adjust and restore proper alignment of the skull and face."
+  },
+  "metadata": {
+    "status_code": 200,
+    "content_type": null,
+    "source_url": "http://host.docker.internal:51237/page_003.pdf",
+    "scrape_id": "019ce65c-2f9b-7592-b50b-59745e3533ad",
+    "num_pages_reported": 1,
+    "warning": "The engine used does not support the following features: skipTlsVerification -- your scrape may be partial.",
+    "document_label": "BioTune",
+    "document_description": "BioTune pricing, practitioner capability, and treatment reference extracted from PDF.",
+    "context_enriched": true,
+    "context_version": "v2",
+    "context_enriched_at": "2026-03-13T16:48:29.2238095+08:00"
+  },
+  "context": {
+    "document_section": "Patient Communication",
+    "page_type": "narrative_guidance",
+    "summary": "Plain-language call scripts describing key treatments and paediatric care guidance.",
+    "keywords": [
+      "phone scripts",
+      "treatment explanations",
+      "infant care",
+      "children chiropractic",
+      "endonasal cranial correction"
+    ],
+    "audience": [
+      "front desk",
+      "patient support",
+      "booking team"
+    ],
+    "entities": {
+      "practitioners": [
+        "Matt",
+        "Jill"
+      ],
+      "locations": [
+        "Joondalup",
+        "Yanchep"
+      ],
+      "techniques": [
+        "ABC",
+        "Dry Needling",
+        "Trigger Point Therapy",
+        "Gua Sha",
+        "Endonasal Cranial Correction"
+      ]
+    },
+    "contains": {
+      "pricing": false,
+      "structured_table": false,
+      "scheduling_constraints": true,
+      "treatment_descriptions": true
+    },
+    "quality_notes": [
+      "Includes a scheduling note for Joondalup (Monday 1:00-1:30 pm only)."
+    ],
+    "brand_label": "BioTune",
+    "label": "BioTune - Phone Scripts and Treatment Explanations",
+    "page_title": "Phone Scripts and Treatment Explanations",
+    "description": "BioTune reception phone script guidance with plain-language treatment descriptions and booking notes."
+  }
+}

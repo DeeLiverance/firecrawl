@@ -1,0 +1,70 @@
+{
+  "document_label": "BioTune",
+  "document_description": "BioTune pricing, practitioner capability, and treatment reference extracted from PDF.",
+  "source_file": "BioTune prices ect.pdf",
+  "generated_at": "2026-03-13T16:48:29.2238095+08:00",
+  "total_pages": 4,
+  "pages": [
+    {
+      "page_number": 1,
+      "file": "01_biotune_chiropractic_fee_schedule.json",
+      "label": "BioTune - Chiropractic Fee Schedule",
+      "description": "BioTune chiropractic fee schedule by appointment type and patient category, including Medicare gap and DVA values.",
+      "document_section": "Pricing",
+      "page_type": "pricing_table",
+      "keywords": [
+        "fee schedule",
+        "appointment types",
+        "adult/child/senior pricing",
+        "Medicare gap",
+        "DVA"
+      ]
+    },
+    {
+      "page_number": 2,
+      "file": "02_biotune_practitioner_capability_matrix.json",
+      "label": "BioTune - Practitioner Capability Matrix",
+      "description": "BioTune practitioner matrix mapping treatments, age ranges, and condition coverage by chiropractor.",
+      "document_section": "Service Coverage",
+      "page_type": "skills_matrix",
+      "keywords": [
+        "treatments",
+        "age ranges",
+        "condition coverage",
+        "practitioner matrix"
+      ]
+    },
+    {
+      "page_number": 3,
+      "file": "03_biotune_phone_scripts_and_treatment_explanations.json",
+      "label": "BioTune - Phone Scripts and Treatment Explanations",
+      "description": "BioTune reception phone script guidance with plain-language treatment descriptions and booking notes.",
+      "document_section": "Patient Communication",
+      "page_type": "narrative_guidance",
+      "keywords": [
+        "phone scripts",
+        "treatment explanations",
+        "infant care",
+        "children chiropractic",
+        "endonasal cranial correction"
+      ]
+    },
+    {
+      "page_number": 4,
+      "file": "04_biotune_soft_tissue_technique_glossary.json",
+      "label": "BioTune - Soft Tissue Technique Glossary",
+      "description": "BioTune glossary of chiropractic and soft tissue techniques used in patient care explanations.",
+      "document_section": "Technique Reference",
+      "page_type": "technique_descriptions",
+      "keywords": [
+        "Activator Method",
+        "Diversified",
+        "Dry Needling",
+        "Gua Sha",
+        "SOT",
+        "Thompson Drop Table",
+        "Trigger Point Therapy"
+      ]
+    }
+  ]
+}

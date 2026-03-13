@@ -1,0 +1,65 @@
+{
+  "page_number": 4,
+  "total_pages": 4,
+  "source_file": "BioTune prices ect.pdf",
+  "content": {
+    "markdown": "Soft Tissue Therapy Techniques: Activator Method® This technique uses a small handheld spring-loaded device called an Activator® to deliver a gentle impulse to specific areas of the spine or extremities. It is designed to support nervous system balance and musculoskeletal comfort. Diversified Technique A widely used chiropractic approach, Diversified focuses on restoring spinal alignment and improving joint mobility. Through careful, hands-on adjustments, this technique aims to reduce stiffness and encourage natural movement. Dry Needling Dry needling involves inserting fine sterile needles into muscle trigger points to help relieve tension and improve muscle performance. It is often used to support recovery and mobility in people with musculoskeletal discomfort. Gua Sha This soft tissue technique uses a smooth handheld tool to massage the muscles and fascia. Gua Sha helps improve circulation, ease tension, and may assist with discomfort linked to repetitive use. Sacro Occipital Technique (SOT®) SOT® focuses on the connection between the pelvis, spine, and skull to encourage balance and comfort. Chiropractors use gentle adjustments and specialised supports to promote better alignment. Thompson Drop Table Technique This method uses a specially designed chiropractic table with padded platforms that drop slightly during an adjustment. The light motion assists gentle spinal adjustments with minimal force. Trigger Point Therapy Trigger Point Therapy targets tight or sensitive areas in the muscles. By applying sustained pressure with the fingers, thumbs, or elbows, these points are encouraged to release, which may help ease discomfort and restore flexibility.",
+    "text": "Soft Tissue Therapy Techniques: Activator Method® This technique uses a small handheld spring-loaded device called an Activator® to deliver a gentle impulse to specific areas of the spine or extremities. It is designed to support nervous system balance and musculoskeletal comfort. Diversified Technique A widely used chiropractic approach, Diversified focuses on restoring spinal alignment and improving joint mobility. Through careful, hands-on adjustments, this technique aims to reduce stiffness and encourage natural movement. Dry Needling Dry needling involves inserting fine sterile needles into muscle trigger points to help relieve tension and improve muscle performance. It is often used to support recovery and mobility in people with musculoskeletal discomfort. Gua Sha This soft tissue technique uses a smooth handheld tool to massage the muscles and fascia. Gua Sha helps improve circulation, ease tension, and may assist with discomfort linked to repetitive use. Sacro Occipital Technique (SOT®) SOT® focuses on the connection between the pelvis, spine, and skull to encourage balance and comfort. Chiropractors use gentle adjustments and specialised supports to promote better alignment. Thompson Drop Table Technique This method uses a specially designed chiropractic table with padded platforms that drop slightly during an adjustment. The light motion assists gentle spinal adjustments with minimal force. Trigger Point Therapy Trigger Point Therapy targets tight or sensitive areas in the muscles. By applying sustained pressure with the fingers, thumbs, or elbows, these points are encouraged to release, which may help ease discomfort and restore flexibility."
+  },
+  "metadata": {
+    "status_code": 200,
+    "content_type": null,
+    "source_url": "http://host.docker.internal:51237/page_004.pdf",
+    "scrape_id": "019ce65c-2fb9-73ec-a997-8c0167c6455c",
+    "num_pages_reported": 1,
+    "warning": "The engine used does not support the following features: skipTlsVerification -- your scrape may be partial.",
+    "document_label": "BioTune",
+    "document_description": "BioTune pricing, practitioner capability, and treatment reference extracted from PDF.",
+    "context_enriched": true,
+    "context_version": "v2",
+    "context_enriched_at": "2026-03-13T16:48:29.2238095+08:00"
+  },
+  "context": {
+    "document_section": "Technique Reference",
+    "page_type": "technique_descriptions",
+    "summary": "Reference definitions for chiropractic and soft tissue techniques used by the clinic.",
+    "keywords": [
+      "Activator Method",
+      "Diversified",
+      "Dry Needling",
+      "Gua Sha",
+      "SOT",
+      "Thompson Drop Table",
+      "Trigger Point Therapy"
+    ],
+    "audience": [
+      "front desk",
+      "patient education",
+      "clinical onboarding"
+    ],
+    "entities": {
+      "techniques": [
+        "Activator Method",
+        "Diversified Technique",
+        "Dry Needling",
+        "Gua Sha",
+        "Sacro Occipital Technique",
+        "Thompson Drop Table Technique",
+        "Trigger Point Therapy"
+      ]
+    },
+    "contains": {
+      "pricing": false,
+      "structured_table": false,
+      "treatment_descriptions": true,
+      "contraindication_details": false
+    },
+    "quality_notes": [
+      "Definitions are descriptive; no fee or eligibility data appears on this page."
+    ],
+    "brand_label": "BioTune",
+    "label": "BioTune - Soft Tissue Technique Glossary",
+    "page_title": "Soft Tissue Technique Glossary",
+    "description": "BioTune glossary of chiropractic and soft tissue techniques used in patient care explanations."
+  }
+}

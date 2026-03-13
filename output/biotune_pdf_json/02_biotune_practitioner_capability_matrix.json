@@ -1,0 +1,75 @@
+{
+  "page_number": 2,
+  "total_pages": 4,
+  "source_file": "BioTune prices ect.pdf",
+  "content": {
+    "markdown": "Treatment our Chiropractors Offer Matt Jill Aneesh Khayal Chiropractic Treatments ABC v v v Activator Method v Clinical Pilates + Rehab v Diversified v v Dry Needling v v v Endonasal Cranial v Correction Gua Sha v v Thompson Drop Down v Technique Trigger Point Therapy v v SOT (Sacre-Occipital Currently Technique) Training Age Range Infant - 0 to 6 yrs v Children - 7 to 11 yrs v v v v Teenagers - 12 to 17 yrs v v v v Adults - Over 18 yrs v v v v Elderly - Over 65 yrs v v v v Specific Region Back Pain + Poor v v v v Posture Elbow Pain + Tennis v v v Elbow Hip Pain v v v v Knee Pain v v v Neck Pain v v v v Headaches + Migraines Osteoarthritis v v v v Plantar Fasciitis v Pregnancy v v v Sciatica v v v v Shoulder Pain v v v Vertigo v v v",
+    "text": "Treatment our Chiropractors Offer Matt Jill Aneesh Khayal Chiropractic Treatments ABC v v v Activator Method v Clinical Pilates + Rehab v Diversified v v Dry Needling v v v Endonasal Cranial v Correction Gua Sha v v Thompson Drop Down v Technique Trigger Point Therapy v v SOT (Sacre-Occipital Currently Technique) Training Age Range Infant - 0 to 6 yrs v Children - 7 to 11 yrs v v v v Teenagers - 12 to 17 yrs v v v v Adults - Over 18 yrs v v v v Elderly - Over 65 yrs v v v v Specific Region Back Pain + Poor v v v v Posture Elbow Pain + Tennis v v v Elbow Hip Pain v v v v Knee Pain v v v Neck Pain v v v v Headaches + Migraines Osteoarthritis v v v v Plantar Fasciitis v Pregnancy v v v Sciatica v v v v Shoulder Pain v v v Vertigo v v v"
+  },
+  "metadata": {
+    "status_code": 200,
+    "content_type": null,
+    "source_url": "http://host.docker.internal:51237/page_002.pdf",
+    "scrape_id": "019ce65c-2f79-75df-a638-aec6983b09e4",
+    "num_pages_reported": 1,
+    "warning": "The engine used does not support the following features: skipTlsVerification -- your scrape may be partial.",
+    "document_label": "BioTune",
+    "document_description": "BioTune pricing, practitioner capability, and treatment reference extracted from PDF.",
+    "context_enriched": true,
+    "context_version": "v2",
+    "context_enriched_at": "2026-03-13T16:48:29.2238095+08:00"
+  },
+  "context": {
+    "document_section": "Service Coverage",
+    "page_type": "skills_matrix",
+    "summary": "Matrix showing treatments, age ranges, and condition/region coverage by practitioner.",
+    "keywords": [
+      "treatments",
+      "age ranges",
+      "condition coverage",
+      "practitioner matrix"
+    ],
+    "audience": [
+      "reception triage",
+      "new patient booking",
+      "clinical admin"
+    ],
+    "entities": {
+      "practitioners": [
+        "Matt",
+        "Jill",
+        "Aneesh",
+        "Khayal"
+      ],
+      "treatment_examples": [
+        "ABC",
+        "Activator Method",
+        "Diversified",
+        "Dry Needling",
+        "Gua Sha",
+        "SOT",
+        "Trigger Point Therapy"
+      ],
+      "age_ranges": [
+        "Infant 0-6",
+        "Children 7-11",
+        "Teenagers 12-17",
+        "Adults 18+",
+        "Elderly 65+"
+      ]
+    },
+    "contains": {
+      "pricing": false,
+      "structured_table": true,
+      "practitioner_mapping": true,
+      "condition_mapping": true
+    },
+    "quality_notes": [
+      "Tick/check marks are represented as the OCR character v."
+    ],
+    "brand_label": "BioTune",
+    "label": "BioTune - Practitioner Capability Matrix",
+    "page_title": "Practitioner Capability Matrix",
+    "description": "BioTune practitioner matrix mapping treatments, age ranges, and condition coverage by chiropractor."
+  }
+}
